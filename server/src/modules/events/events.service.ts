@@ -88,7 +88,7 @@ export function goWith(eventId: string, userId: string) {
     if (!event.groupId) {
       const group = createGroup(userId, {
         name: `Going to ${event.title}`.slice(0, 70),
-        description: `Find people to go with to ${event.title}. Official page: ${event.registerUrl}`.slice(0, 400),
+        description: `Find people to go with to ${event.title}. Plan together, then go together.`.slice(0, 400),
         category: event.category,
         mode: event.mode,
         location: event.mode === 'Online' ? 'Online' : event.city || 'Online',

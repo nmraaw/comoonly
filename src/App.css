@@ -17,3 +17,15 @@
 .chat { height:clamp(260px,48dvh,440px); min-height:260px; overflow:hidden; padding:3px; }
 .chat-history { flex:1; min-height:0; max-height:none; overflow-y:auto; overscroll-behavior:contain; overflow-anchor:none; padding-bottom:8px; }
 .composer { position:static; flex-shrink:0; margin:8px 0 3px; }
+
+/* Unread count on the bell and the Messages tab */
+.icon-button,.bottom-nav a{position:relative}
+.badge{position:absolute;top:0;right:0;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ink);color:var(--lime);font-size:10px;font-weight:800;line-height:18px;text-align:center}
+.bottom-nav .badge{top:4px;right:calc(50% - 22px);background:var(--lime);color:var(--ink)}
+.bottom-nav a.active .badge{background:var(--ink);color:var(--lime)}
+.header-actions{display:flex;gap:8px}
+/* Admin dashboard totals */
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.stat{background:#fff;border-radius:18px;padding:14px 8px;text-align:center}
+.stat strong{display:block;font-size:24px;font-weight:800}
+.stat small{font-size:11px;color:var(--muted)}

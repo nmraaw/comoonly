@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DetailHeader from '../components/DetailHeader'
 import { useMock } from '../state/MockContext'
-const INTERESTS=['Music','Creative','Tech','Film','Reading','Games','Drawing','Coffee','Walking','Design','Sports','Food']
+// The last four match event types, so you hear about new hackathons, workshops etc. (see events.service.ts).
+const INTERESTS=['Music','Creative','Tech','Film','Reading','Games','Drawing','Coffee','Walking','Design','Sports','Food','Hackathons','Workshops','Competitions','Meetups']
 // `first` = right after sign-up (no way back yet); otherwise it's "Edit profile" from the Me tab.
 export default function ProfileSetup({first=false}:{first?:boolean}){
  const {me,saveProfile}=useMock();const navigate=useNavigate()
