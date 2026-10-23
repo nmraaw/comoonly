@@ -1,0 +1,7 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useMock } from '../state/MockContext'
+import { Modal } from './UI'
+export default function JoinAction({id}:{id:string}){const {membership,join}=useMock();const [open,setOpen]=useState(false);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const state=membership[id]
+ async function submit(form:HTMLFormElement){setBusy(true);setError('');try{await join(id,String(new FormData(form).get('intro')));setOpen(false)}catch(err){setError((err as Error).message)}finally{setBusy(false)}}
+ return <>{state==='joined'?<Link className="button primary" to={'/groups/'+id}>Joined · Open group →</Link>:state==='pending'?<div className="notice mint" role="status">Pending · A hello in progress. The host will get back to you.</div>:<button className="button primary" onClick={()=>setOpen(true)}>Request to join →</button>}{open&&<Modal title="Say a little hello" onClose={()=>setOpen(false)}><form onSubmit={e=>{e.preventDefault();submit(e.currentTarget)}}><label>What are you excited to bring?<textarea name="intro" required maxLength={300}/></label><label className="check-row"><input type="checkbox" required/> I can keep things kind and respectful.</label>{error&&<p className="notice pink" role="alert">{error}</p>}<button className="button primary" disabled={busy}>{busy?'Sending…':'Send join request →'}</button></form></Modal>}</>}

@@ -1,0 +1,83 @@
+import { randomUUID } from 'node:crypto'
+import { db } from '../../db/connection.ts'
+import { HttpError } from '../../middleware/errors.ts'
+import { requireMember } from '../groups/groups.service.ts'
+import { connectionStatus } from '../people/people.service.ts'
+
+const LIMIT = 200 // newest 200 messages per conversation is plenty for small groups
+
+const SELECT = `SELECT m.id, m.author_id AS authorId, u.name AS author, m.text, m.created_at AS createdAt
+  FROM messages m JOIN users u ON u.id = m.author_id`
+
+// Query returns newest first (so LIMIT keeps the latest); the screen wants oldest first.
+const oldestFirst = (rows: unknown[]) => rows.reverse()
+
+function requireConnected(userId: string, otherId: string) {
+  if (connectionStatus(userId, otherId) !== 'accepted') {
+    throw new HttpError(403, 'Connect before sending a private message')
+  }
+}
+
+export function groupMessages(groupId: string, userId: string) {
+  requireMember(groupId, userId)
+  const rows = db
+    .prepare(`${SELECT} WHERE m.group_id = ? ORDER BY m.created_at DESC, m.rowid DESC LIMIT ${LIMIT}`)
+    .all(groupId)
+  return oldestFirst(rows)
+}
+
+export function directMessages(userId: string, otherId: string) {
+  requireConnected(userId, otherId)
+  const rows = db
+    .prepare(
+      `${SELECT} WHERE ((m.author_id = ? AND m.to_id = ?) OR (m.author_id = ? AND m.to_id = ?))
+       ORDER BY m.created_at DESC, m.rowid DESC LIMIT ${LIMIT}`,
+    )
+    .all(userId, otherId, otherId, userId)
+  return oldestFirst(rows)
+}
+
+export function sendToGroup(groupId: string, userId: string, text: string) {
+  requireMember(groupId, userId)
+  return insert({ groupId, toId: null, userId, text })
+}
+
+export function sendDirect(userId: string, otherId: string, text: string) {
+  requireConnected(userId, otherId)
+  return insert({ groupId: null, toId: otherId, userId, text })
+}
+
+function insert(m: { groupId: string | null; toId: string | null; userId: string; text: string }) {
+  const id = randomUUID()
+  db.prepare('INSERT INTO messages (id, group_id, to_id, author_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    id,
+    m.groupId,
+    m.toId,
+    m.userId,
+    m.text,
+    Date.now(),
+  )
+  return db.prepare(`${SELECT} WHERE m.id = ?`).get(id)
+}
+
+// The Messages screen: your groups and accepted connections, each with its latest message.
+export function conversations(userId: string) {
+  const groups = db
+    .prepare(
+      `SELECT g.id, g.name, g.color,
+         (SELECT text FROM messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) AS last
+       FROM group_members gm JOIN groups g ON g.id = gm.group_id
+       WHERE gm.user_id = ? AND gm.status = 'joined' ORDER BY g.name`,
+    )
+    .all(userId)
+  const people = db
+    .prepare(
+      `SELECT u.id, u.name,
+         (SELECT text FROM messages WHERE (author_id = u.id AND to_id = ?) OR (author_id = ? AND to_id = u.id)
+          ORDER BY created_at DESC LIMIT 1) AS last
+       FROM connections c JOIN users u ON u.id = CASE WHEN c.from_id = ? THEN c.to_id ELSE c.from_id END
+       WHERE (c.from_id = ? OR c.to_id = ?) AND c.status = 'accepted' ORDER BY u.name`,
+    )
+    .all(userId, userId, userId, userId, userId)
+  return { groups, people }
+}

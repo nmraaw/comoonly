@@ -1,0 +1,81 @@
+import { db } from '../../db/connection.ts'
+import { HttpError } from '../../middleware/errors.ts'
+import { toUser } from '../auth/auth.service.ts'
+import type { ProfileInput } from './people.schema.ts'
+
+// How `viewer` is connected to `other`, from the viewer's side.
+export function connectionStatus(viewerId: string, otherId: string) {
+  const row: any = db
+    .prepare('SELECT from_id, status FROM connections WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)')
+    .get(viewerId, otherId, otherId, viewerId)
+  if (!row) return null
+  if (row.status === 'accepted') return 'accepted'
+  return row.from_id === viewerId ? 'pending' : 'incoming'
+}
+
+// What anyone logged in can see on a profile. Email stays private.
+export function getProfile(id: string, viewerId: string) {
+  const user: any = db.prepare('SELECT id, name, city, tagline, bio, interests FROM users WHERE id = ?').get(id)
+  if (!user) throw new HttpError(404, 'Profile not found')
+  const groups = db
+    .prepare(
+      `SELECT g.id, g.name FROM group_members m JOIN groups g ON g.id = m.group_id
+       WHERE m.user_id = ? AND m.status = 'joined' ORDER BY m.rowid`,
+    )
+    .all(id)
+  return { ...user, interests: JSON.parse(user.interests), groups, connection: connectionStatus(viewerId, id) }
+}
+
+// Returns the full logged-in user (with email), same shape as /api/auth/me.
+export function updateProfile(id: string, input: ProfileInput) {
+  db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ?, interests = ? WHERE id = ?').run(
+    input.name,
+    input.city,
+    input.tagline,
+    input.bio,
+    JSON.stringify(input.interests),
+    id,
+  )
+  return toUser(db.prepare('SELECT id, name, email, city, tagline, bio, interests FROM users WHERE id = ?').get(id))
+}
+
+export function requestConnection(fromId: string, toId: string) {
+  if (fromId === toId) throw new HttpError(400, 'You can’t connect with yourself')
+  if (!db.prepare('SELECT 1 FROM users WHERE id = ?').get(toId)) throw new HttpError(404, 'Profile not found')
+  const status = connectionStatus(fromId, toId)
+  if (status === 'incoming') return answerConnection(fromId, toId, 'accept') // they already asked you: that's a yes
+  if (status) return status
+  db.prepare('INSERT INTO connections (from_id, to_id, created_at) VALUES (?, ?, ?)').run(fromId, toId, Date.now())
+  return 'pending'
+}
+
+export function answerConnection(userId: string, fromId: string, decision: 'accept' | 'decline') {
+  const where = "from_id = ? AND to_id = ? AND status = 'pending'"
+  const sql = decision === 'accept' ? `UPDATE connections SET status = 'accepted' WHERE ${where}` : `DELETE FROM connections WHERE ${where}`
+  if (!db.prepare(sql).run(fromId, userId).changes) throw new HttpError(404, 'Request not found')
+  return decision === 'accept' ? 'accepted' : null
+}
+
+// Everything the Messages screen needs about people.
+export function listConnections(userId: string) {
+  const accepted = db
+    .prepare(
+      `SELECT u.id, u.name, u.city FROM connections c
+       JOIN users u ON u.id = CASE WHEN c.from_id = ? THEN c.to_id ELSE c.from_id END
+       WHERE (c.from_id = ? OR c.to_id = ?) AND c.status = 'accepted' ORDER BY u.name`,
+    )
+    .all(userId, userId, userId)
+  const incoming = db
+    .prepare(
+      `SELECT u.id, u.name, u.city FROM connections c JOIN users u ON u.id = c.from_id
+       WHERE c.to_id = ? AND c.status = 'pending' ORDER BY c.created_at`,
+    )
+    .all(userId)
+  const outgoing = db
+    .prepare(
+      `SELECT u.id, u.name, u.city FROM connections c JOIN users u ON u.id = c.to_id
+       WHERE c.from_id = ? AND c.status = 'pending' ORDER BY c.created_at`,
+    )
+    .all(userId)
+  return { accepted, incoming, outgoing }
+}
