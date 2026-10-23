@@ -1,7 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { base, get, json, loginAs, status } from './helpers.ts'
-import { cleanEvents, eventsFromJsonLd } from '../src/modules/events/events.finder.ts'
+import { cleanEvents } from '../src/modules/events/events.ai.ts'
+import { eventsFromJsonLd } from '../src/modules/events/events.finder.ts'
+
+// A date a number of days from now, e.g. soon(30) → '2026-11-22'. Events must be upcoming, but not years away.
+const soon = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 
 test('connections, then direct messages only between connected people', async () => {
   const [hira, zain] = [await loginAs('hira'), await loginAs('zain')]
@@ -45,15 +49,15 @@ test('group chat, activities and to-dos are for members only', async () => {
 
 test('event finder reads JSON-LD and drops past or malformed events', () => {
   const html = `<html><script type="application/ld+json">{"@type":"ItemList","itemListElement":[
-    {"item":{"@type":"Event","name":"Lahore Hackathon","startDate":"2030-03-01T10:00:00+05:00",
+    {"item":{"@type":"Event","name":"Lahore Hackathon","startDate":"${soon(60)}T10:00:00+05:00",
       "location":{"@type":"Place","address":{"addressLocality":"Lahore"}},"url":"/e/1"}},
     {"item":{"@type":"Event","name":"Old meetup","startDate":"2001-01-01","url":"https://x.test/old"}},
     {"item":{"@type":"Event","name":"No date","url":"https://x.test/nodate"}}]}</script>
     <script type="application/ld+json">{broken json</script></html>`
   const found = cleanEvents(eventsFromJsonLd(html, 'https://events.test/list'), { name: 'test', url: 'https://events.test/list' })
   assert.deepEqual(found, [{
-    title: 'Lahore Hackathon', date: '2030-03-01T10:00:00+05:00', city: 'Lahore', mode: 'In person', category: 'Hackathon',
-    description: '', registerUrl: 'https://events.test/e/1', sourceUrl: 'https://events.test/list',
+    title: 'Lahore Hackathon', date: `${soon(60)}T10:00:00+05:00`, city: 'Lahore', mode: 'In person', category: 'Hackathon',
+    description: '', deadline: '', registerUrl: 'https://events.test/e/1', sourceUrl: 'https://events.test/list',
   }])
 })
 

@@ -17,8 +17,8 @@ import { workspaceRoutes } from './modules/workspace/workspace.routes.ts'
 // Builds the app without starting it, so tests can run it on a random port.
 export const app = express()
 
-// Screenshots for "Add from a post" are bigger than anything else, so only that route allows ~8 MB.
-app.use('/api/events/from-post', express.json({ limit: '8mb' }))
+// Screenshots for "Suggest an event" are bigger than anything else, so only that route allows ~8 MB.
+app.use('/api/events/suggest', express.json({ limit: '8mb' }))
 app.use(express.json({ limit: '100kb' })) // reads JSON request bodies into req.body
 app.use(loadUser) // sets req.user when a valid session cookie is present
 

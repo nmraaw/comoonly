@@ -5,23 +5,29 @@ import { createGroup } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
 
-const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.city, e.mode, e.category, e.description,
+const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description,
     e.register_url AS registerUrl, e.source_url AS sourceUrl, e.status, e.group_id AS groupId,
+    (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy,
     (SELECT COUNT(*) FROM group_members m WHERE m.group_id = e.group_id AND m.status = 'joined') AS goingCount
   FROM events e`
 
+// Dates are ISO text (2026-11-02 or 2026-11-02T18:00), so comparing them as text works.
+const today = () => new Date().toISOString().slice(0, 10)
+const STILL_ON = "e.starts_at >= ? AND (e.deadline = '' OR e.deadline >= ?)"
+
 // Returns false for a duplicate, so nothing is saved twice. The same event is often listed on several
 // pages (e.g. an online talk on both the Lahore and Karachi pages), so its own link counts too.
-export function saveEvent(input: EventInput, status: 'draft' | 'published' = 'draft') {
+export function saveEvent(input: EventInput, status: 'draft' | 'published' = 'draft', suggestedBy: string | null = null) {
   const id = randomUUID()
   const result = db
     .prepare(
-      `INSERT OR IGNORE INTO events (id, title, starts_at, city, mode, category, description, register_url, source_url, status, created_at)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      `INSERT OR IGNORE INTO events (id, title, starts_at, deadline, city, mode, category, description, register_url, source_url,
+         status, suggested_by, created_at)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM events WHERE register_url = ? OR (title = ? AND starts_at = ?))`,
     )
-    .run(id, input.title, input.date, input.city, input.mode, input.category, input.description,
-      input.registerUrl, input.sourceUrl, status, Date.now(), input.registerUrl, input.title, input.date)
+    .run(id, input.title, input.date, input.deadline, input.city, input.mode, input.category, input.description,
+      input.registerUrl, input.sourceUrl, status, suggestedBy, Date.now(), input.registerUrl, input.title, input.date)
   if (result.changes && status === 'published') announce(getEvent(id))
   return result.changes > 0
 }
@@ -46,14 +52,23 @@ function announce(event: any) {
   if (ids.length) notify(ids, 'update', `New ${event.category.toLowerCase()} you might like: ${event.title}`, '/events')
 }
 
-// Public feed: published and not over yet (dates are ISO text, so text comparison works).
+// Public feed: published, not over yet, and registration still open.
 export function listPublished() {
-  const today = new Date().toISOString().slice(0, 10)
-  return db.prepare(`${SELECT} WHERE e.status = 'published' AND e.starts_at >= ? ORDER BY e.starts_at`).all(today)
+  return db.prepare(`${SELECT} WHERE e.status = 'published' AND ${STILL_ON} ORDER BY e.starts_at`).all(today(), today())
 }
 
 export function listDrafts() {
-  return db.prepare(`${SELECT} WHERE e.status = 'draft' ORDER BY e.starts_at`).all()
+  return db.prepare(`${SELECT} WHERE e.status = 'draft' AND ${STILL_ON} ORDER BY e.starts_at`).all(today(), today())
+}
+
+// Runs daily: drafts nobody reviewed before the event (or deadline) are deleted, rejected events after 30 days,
+// and the list of already-read Instagram posts after 30 days. Published events stay, as history.
+export function tidyEvents() {
+  const monthAgo = Date.now() - 30 * 86_400_000
+  const drafts = db.prepare(`DELETE FROM events AS e WHERE status = 'draft' AND NOT (${STILL_ON})`).run(today(), today()).changes
+  const rejected = db.prepare("DELETE FROM events WHERE status = 'rejected' AND created_at < ?").run(monthAgo).changes
+  db.prepare('DELETE FROM seen_posts WHERE seen_at < ?').run(monthAgo)
+  return { drafts, rejected }
 }
 
 function getEvent(id: string): any {
@@ -63,7 +78,7 @@ function getEvent(id: string): any {
 }
 
 const COLUMNS: Record<string, string> = {
-  title: 'title', date: 'starts_at', city: 'city', mode: 'mode', category: 'category',
+  title: 'title', date: 'starts_at', deadline: 'deadline', city: 'city', mode: 'mode', category: 'category',
   description: 'description', registerUrl: 'register_url', sourceUrl: 'source_url', status: 'status',
 }
 

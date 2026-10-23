@@ -1,11 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { config } from '../../config.ts'
-import { HttpError } from '../../middleware/errors.ts'
-import { eventSchema, type EventInput } from './events.schema.ts'
+import { askAi, cleanEvents, type Candidate, type Source } from './events.ai.ts'
 import { saveEvent } from './events.service.ts'
-
-type Source = { name: string; url: string; city?: string }
-type Candidate = Record<string, unknown>
 
 // Many event sites embed machine-readable event data (schema.org JSON-LD) for search engines. Read that first.
 export function eventsFromJsonLd(html: string, pageUrl: string): Candidate[] {
@@ -60,64 +56,6 @@ function guessCategory(text: string) {
 
 function stripTags(html: string) {
   return html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-}
-
-const PROMPT = `You extract upcoming events (events, hackathons, workshops, competitions) from a web page.
-Reply with ONLY a JSON array, no other text. Each item:
-{"title": string, "date": ISO 8601 start date-time, "city": string ("" if online),
- "mode": "In person" | "Online" | "Hybrid", "category": "Hackathon" | "Workshop" | "Competition" | "Meetup" | "Event",
- "description": short summary under 300 characters, "registerUrl": the official registration link as a full URL}
-Only include events that are really on the page. Never invent links or dates. Reply [] if there are none.`
-
-// Sends text (and optionally an image) to the configured AI and returns the events it found.
-// Works with any OpenAI-compatible provider: Gemini, Groq, Ollama... (see .env.example).
-async function askAi(content: string | object[]): Promise<Candidate[]> {
-  const res = await fetch(`${config.ai.baseUrl.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(config.ai.apiKey && { authorization: `Bearer ${config.ai.apiKey}` }) },
-    body: JSON.stringify({
-      model: config.ai.model,
-      temperature: 0,
-      messages: [
-        { role: 'system', content: PROMPT },
-        { role: 'user', content },
-      ],
-    }),
-    signal: AbortSignal.timeout(60_000),
-  })
-  if (!res.ok) throw new HttpError(502, `The AI service answered ${res.status}. Try again in a minute.`)
-  const reply = String((await res.json()).choices?.[0]?.message?.content ?? '')
-  try {
-    const items = JSON.parse(reply.slice(reply.indexOf('['), reply.lastIndexOf(']') + 1))
-    return Array.isArray(items) ? items : []
-  } catch {
-    return [] // the AI didn't answer with a list: treat it as "nothing found"
-  }
-}
-
-// Admin pastes an Instagram/TikTok post (caption and/or poster screenshot). Found events become drafts for review.
-// We never scrape those sites: their terms forbid it, and they block it anyway.
-export async function eventsFromPost(post: { postUrl: string; text: string; image?: string }) {
-  if (!config.ai.baseUrl) throw new HttpError(400, 'Add an AI provider in .env first (see .env.example)')
-  const content = [
-    { type: 'text', text: `Social media post: ${post.postUrl}\n\n${post.text || '(no caption: read the image)'}` },
-    ...(post.image ? [{ type: 'image_url', image_url: { url: post.image } }] : []),
-  ]
-  // A poster often has no link; then the post itself is where people find out more.
-  const candidates = (await askAi(content)).map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
-  const events = cleanEvents(candidates, { name: 'post', url: post.postUrl })
-  return { found: events.length, added: events.filter((e) => saveEvent(e)).length }
-}
-
-// Checks every candidate; keeps only well-formed events that haven't happened yet.
-export function cleanEvents(candidates: Candidate[], source: Source): EventInput[] {
-  const now = Date.now()
-  return candidates.flatMap((c) => {
-    // The source's city is a fallback for in-person events only; an online event isn't "in Lahore".
-    const city = c.city || (c.mode === 'Online' ? '' : source.city) || ''
-    const parsed = eventSchema.safeParse({ ...c, city, sourceUrl: source.url })
-    return parsed.success && Date.parse(parsed.data.date) >= now ? [parsed.data] : []
-  })
 }
 
 async function fetchPage(url: string) {

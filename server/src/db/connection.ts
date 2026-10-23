@@ -14,6 +14,8 @@ db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'))
 const NEW_COLUMNS = [
   "ALTER TABLE activities ADD COLUMN plan TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE activities ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE events ADD COLUMN deadline TEXT NOT NULL DEFAULT ''", // last day to register, '' if unknown
+  'ALTER TABLE events ADD COLUMN suggested_by TEXT', // user id, for events people suggested
 ]
 for (const sql of NEW_COLUMNS) {
   try {

@@ -4,6 +4,8 @@ import { createServer } from 'node:http'
 import { base, get, json, loginAs, status } from './helpers.ts'
 import { config } from '../src/config.ts'
 
+const soon = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+
 test('leaving a group; hosts cannot leave their own', async () => {
   const [hira, me] = [await loginAs('hira'), await loginAs('me')] // Hira hosts tiny-game; 'me' is a member
   assert.equal(await status('/groups/tiny-game/leave', json({}, hira)), 409)
@@ -66,26 +68,51 @@ test('notifications: join requests, acceptance, messages (merged), events by int
   assert.equal((await get('/notifications/unread', areeba)).total, 0)
 })
 
-test('add from a post: AI result becomes a draft; admin only', async () => {
-  // A stand-in for Gemini that answers like an OpenAI-compatible API would.
-  const fakeAi = createServer((_req, res) => {
-    const event = { title: 'Lahore Startup Mixer', date: '2030-04-04T18:00', city: 'Lahore', mode: 'In person', category: 'Meetup', description: '', registerUrl: '' }
-    res.end(JSON.stringify({ choices: [{ message: { content: `Here you go: ${JSON.stringify([event])}` } }] }))
+test('suggest an event: AI reads the post, result waits for review; closed or past events are dropped', async () => {
+  // A stand-in for Gemini that answers like an OpenAI-compatible API would, and records what it was asked.
+  let asked = ''
+  const fakeAi = createServer((req, res) => {
+    let body = ''
+    req.on('data', (chunk) => (body += chunk))
+    req.on('end', () => {
+      asked = body
+      const base = { city: 'Lahore', mode: 'In person', category: 'Meetup', description: '', registerUrl: '' }
+      const events = [
+        { ...base, title: 'Lahore Startup Mixer', date: `${soon(30)}T18:00`, deadline: soon(25) },
+        { ...base, title: 'Registration closed', date: `${soon(40)}T18:00`, deadline: '2020-01-01' },
+        { ...base, title: 'Wrong year guess', date: '2099-01-01T10:00' },
+      ]
+      res.end(JSON.stringify({ choices: [{ message: { content: `Here you go: ${JSON.stringify(events)}` } }] }))
+    })
   }).listen(0)
   config.ai.baseUrl = `http://localhost:${(fakeAi.address() as { port: number }).port}`
   try {
-    const [sara, hira] = [await loginAs('sara'), await loginAs('hira')]
+    const [sara, hira] = [await loginAs('sara'), await loginAs('hira')] // Hira is a regular user
     const post = { postUrl: 'https://www.instagram.com/p/abc123/', text: 'Startup mixer this Friday!' }
-    assert.equal(await status('/events/from-post', json(post, hira)), 403)
-    assert.equal(await status('/events/from-post', json({ postUrl: post.postUrl }, sara)), 400) // no caption or image
-    assert.equal(await status('/events/from-post', json({ ...post, image: 'data:text/html;base64,AA' }, sara)), 400)
-    assert.deepEqual(await (await fetch(`${base}/events/from-post`, json(post, sara))).json(), { found: 1, added: 1 })
+    assert.equal(await status('/events/suggest', json({ postUrl: post.postUrl }, hira)), 400) // no caption or image
+    assert.equal(await status('/events/suggest', json({ ...post, image: 'data:text/html;base64,AA' }, hira)), 400)
+    assert.deepEqual(await (await fetch(`${base}/events/suggest`, json(post, hira))).json(), { found: 1, added: 1 })
+    assert.match(asked, /Today is \d{4}-\d{2}-\d{2} in Pakistan/) // so "Sat 2 Nov" gets the right year
     const draft = (await get('/events/review', sara)).find((e: { title: string }) => e.title === 'Lahore Startup Mixer')
     assert.equal(draft.registerUrl, post.postUrl) // no link on the poster: the post itself is used
+    assert.equal(draft.deadline, soon(25))
+    assert.equal(draft.suggestedBy, 'Hira S.')
   } finally {
     config.ai.baseUrl = ''
     fakeAi.close()
   }
+})
+
+test('daily tidy-up removes drafts whose event or deadline has passed; published ones stay', async () => {
+  const { saveEvent, tidyEvents } = await import('../src/modules/events/events.service.ts')
+  const event = { title: 'Old draft', date: '2001-01-01', deadline: '', city: '', mode: 'Online' as const,
+    category: 'Event', description: '', registerUrl: 'https://old.test/1', sourceUrl: 'https://old.test' }
+  saveEvent(event)
+  saveEvent({ ...event, title: 'Deadline passed', date: '2030-01-01', deadline: '2001-01-01', registerUrl: 'https://old.test/2' })
+  saveEvent({ ...event, title: 'Old but published', registerUrl: 'https://old.test/3' }, 'published')
+  assert.equal(tidyEvents().drafts, 2)
+  const { db } = await import('../src/db/connection.ts')
+  assert.ok(db.prepare("SELECT 1 FROM events WHERE title = 'Old but published'").get())
 })
 
 test('too many wrong passwords locks that email for a while', async () => {

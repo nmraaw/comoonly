@@ -11,6 +11,11 @@ export const eventSchema = z.object({
   category: z.string().trim().min(1).max(40).default('Event'),
   description: z.string().trim().max(1000).default(''),
   registerUrl: httpUrl, // the official registration page
+  deadline: z // last day to register, if the post says
+    .string()
+    .trim()
+    .refine((d) => !d || !Number.isNaN(Date.parse(d)), 'Add a valid deadline')
+    .default(''),
   sourceUrl: httpUrl, // where we found it
 })
 
@@ -19,8 +24,8 @@ export const eventPatchSchema = eventSchema.partial().extend({
   status: z.enum(['draft', 'published', 'rejected']).optional(),
 })
 
-// "Add from a post": the post's link, plus its caption and/or a screenshot of the poster.
-export const postSchema = z
+// "Suggest an event": the post's link, plus its caption and/or a screenshot of the poster.
+export const suggestSchema = z
   .object({
     postUrl: httpUrl,
     text: z.string().trim().max(5000).default(''),

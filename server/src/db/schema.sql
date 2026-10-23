@@ -143,3 +143,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id, read, created_at);
+
+-- Instagram posts the reader already looked at, so none is read (or sent to the AI) twice.
+CREATE TABLE IF NOT EXISTS seen_posts (
+  post_id TEXT PRIMARY KEY,
+  seen_at INTEGER NOT NULL
+);

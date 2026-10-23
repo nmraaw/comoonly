@@ -58,9 +58,17 @@ memberships) lives in `src/state/MockProvider.tsx`; each screen loads its own da
 6. Published events show their official registration link and **Find people to go with**, which opens
    one shared group (with chat) per event.
 
-Admins are the emails in `ADMIN_EMAILS`. The AI is optional and free options work: Groq's free tier,
-or Ollama running on your own computer (see `.env.example`). Before adding a source, check that site
-allows automated reading (its terms of use and robots.txt).
+**Suggest an event:** anyone can share an event they saw on Instagram, TikTok, WhatsApp or a poster
+(link + caption and/or screenshot). The AI reads it and it joins the review queue with "Suggested by".
+We don't scrape Instagram or TikTok: their terms forbid it. An official Instagram API reader is planned.
+
+**Keeping it fresh:** the AI is told today's date (so "Sat 2 Nov" gets the right year). Events that are
+over, past their registration deadline, or more than ~13 months away are dropped. In production the server
+looks for new events every 12 hours and deletes drafts whose date or deadline has passed.
+
+Admins are the emails in `ADMIN_EMAILS`. The AI is Google Gemini's free tier by default (see `.env.example`
+for the 3-step setup); Groq or Ollama also work. Before adding a source, check that site allows automated
+reading (its terms of use and robots.txt).
 
 ## Put it online
 
