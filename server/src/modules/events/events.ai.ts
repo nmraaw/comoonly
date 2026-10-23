@@ -9,13 +9,17 @@ export type Source = { name: string; url: string; city?: string }
 const DAY = 86_400_000
 
 // Posters often say "Sat 2 Nov" with no year, so the AI must know what "today" is (in Pakistan).
-const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' }) // YYYY-MM-DD
+// The weekday matters too: without it, "this Friday" posted on a Friday was read as the next day.
+const today = () => {
+  const zone = { timeZone: 'Asia/Karachi' }
+  return `${new Date().toLocaleDateString('en-GB', { ...zone, weekday: 'long' })} ${new Date().toLocaleDateString('en-CA', zone)}`
+}
 
 const prompt = () => `Today is ${today()} in Pakistan. You extract upcoming events (events, hackathons, workshops,
 competitions) from a web page or a social media post. Reply with ONLY a JSON array, no other text. Each item:
 {"title": string, "date": ISO 8601 start date-time, "city": string ("" if online),
  "mode": "In person" | "Online" | "Hybrid", "category": "Hackathon" | "Workshop" | "Competition" | "Meetup" | "Event",
- "description": short summary under 300 characters, "registerUrl": the official registration link as a full URL or "",
+ "description": a short summary under 300 characters using only facts in the post, "registerUrl": the official registration link as a full URL or "",
  "deadline": last day to register as YYYY-MM-DD, or "" if not stated}
 A date without a year means its next occurrence after today. Only include events that are really there.
 Never invent links or dates. Reply [] if there are none.`
@@ -38,6 +42,9 @@ export async function askAi(content: string | object[]): Promise<Candidate[]> {
       ],
     }),
     signal: AbortSignal.timeout(60_000),
+  }).catch((err) => {
+    if (err.name === 'TimeoutError') throw new HttpError(504, 'The AI took too long to answer. Please try again.')
+    throw err
   })
   if (!res.ok) throw new HttpError(502, `The AI service answered ${res.status}. Try again in a minute.`)
   const reply = String((await res.json()).choices?.[0]?.message?.content ?? '')
@@ -58,10 +65,13 @@ export function cleanEvents(candidates: Candidate[], source: Source): EventInput
     const city = c.city || (c.mode === 'Online' ? '' : source.city) || ''
     const parsed = eventSchema.safeParse({ ...c, city, sourceUrl: source.url })
     if (!parsed.success) return []
-    const { date, deadline } = parsed.data
+    // "2026-11-15T00:00:00" means no time was given: keep just the day, so no fake "00:00" is shown.
+    const date = parsed.data.date.replace(/T00:00(:00(\.0+)?)?Z?$/, '')
+    const { deadline } = parsed.data
     const starts = Date.parse(date)
     const open = !deadline || Date.parse(deadline) + DAY > now // the deadline day itself still counts
-    return starts >= now && starts < now + 400 * DAY && open ? [parsed.data] : []
+    // A day of slack: an event dated just "today" counts as midnight, which has already passed.
+    return starts >= now - DAY && starts < now + 400 * DAY && open ? [{ ...parsed.data, date }] : []
   })
 }
 
