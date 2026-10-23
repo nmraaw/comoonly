@@ -20,7 +20,8 @@ competitions) from a web page or a social media post. Reply with ONLY a JSON arr
 {"title": string, "date": ISO 8601 start date-time, "city": string ("" if online),
  "mode": "In person" | "Online" | "Hybrid", "category": "Hackathon" | "Workshop" | "Competition" | "Meetup" | "Event",
  "description": a short summary under 300 characters using only facts in the post, "registerUrl": the official registration link as a full URL or "",
- "deadline": last day to register as YYYY-MM-DD, or "" if not stated}
+ "deadline": last day to register as YYYY-MM-DD, or "" if not stated,
+ "country": the country it takes place in (for online events, the organizer's country), or "" if unclear}
 A date without a year means its next occurrence after today. Only include events that are really there.
 Never invent links or dates. Reply [] if there are none.`
 
@@ -77,14 +78,22 @@ export function cleanEvents(candidates: Candidate[], source: Source): EventInput
 
 // A post (Instagram, TikTok, a WhatsApp poster...): caption and/or image → events saved as drafts for review.
 // Used by "Suggest an event", and later by the Instagram reader.
-export async function eventsFromPost(post: { postUrl: string; text: string; image?: string }, suggestedBy?: string) {
+// `pakistanOnly` (used by the Instagram reader): drop events the AI places outside Pakistan, or can't place.
+// Instagram doesn't share a post's location through the API, so the AI judges it from venue, city, prices etc.
+export async function eventsFromPost(
+  post: { postUrl: string; text: string; image?: string },
+  suggestedBy?: string,
+  pakistanOnly = false,
+) {
   if (!config.ai.baseUrl) throw new HttpError(503, 'Event suggestions aren’t switched on yet. Please try again later.')
   const content = [
     { type: 'text', text: `Post: ${post.postUrl}\n\n${post.text || '(no caption: read the image)'}` },
     ...(post.image ? [{ type: 'image_url', image_url: { url: post.image } }] : []),
   ]
   // A poster often has no link; then the post itself is where people find out more.
-  const candidates = (await askAi(content)).map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
+  const candidates = (await askAi(content))
+    .filter((c) => !pakistanOnly || /^(pakistan|pk)$/i.test(String(c.country ?? '').trim()))
+    .map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
   const events = cleanEvents(candidates, { name: 'post', url: post.postUrl })
   return { found: events.length, added: events.filter((e) => saveEvent(e, 'draft', suggestedBy)).length }
 }

@@ -122,7 +122,11 @@ export async function scanInstagram(lists?: InstagramLists) {
           }
           if (aiCalls++) await pause(limits.aiPauseMs)
           const image = post.media_type === 'VIDEO' ? undefined : await asDataUrl(post.media_url)
-          const result = await eventsFromPost({ postUrl: post.permalink, text: post.caption ?? '', image })
+          const result = await eventsFromPost(
+            { postUrl: post.permalink, text: post.caption ?? '', image },
+            undefined,
+            true,
+          )
           found += result.found
           added += result.added
         }
