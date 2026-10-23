@@ -7,7 +7,14 @@ import { eventsFromPost } from './events.ai.ts'
 // - Hashtag Search: public posts from the last 24 hours with a hashtag (max 30 different hashtags a week).
 // - Business Discovery: the latest posts of business/creator accounts you list (event organizers).
 // The hashtags and accounts live in instagram.json, read on every run so you can edit it any time.
-type Post = { id: string; caption?: string; media_type?: string; media_url?: string; permalink: string; timestamp: string }
+type Post = {
+  id: string
+  caption?: string
+  media_type?: string
+  media_url?: string
+  permalink: string
+  timestamp: string
+}
 export type InstagramLists = { hashtags: string[]; accounts: string[] }
 
 const WEEK = 7 * 86_400_000
@@ -20,17 +27,23 @@ export const looksLikeEvent = (caption = '') => EVENT_WORDS.test(caption)
 
 async function graph(path: string, params: Record<string, string>) {
   const url = new URL(`${config.instagram.apiUrl.replace(/\/$/, '')}/${path}`)
-  for (const [key, value] of Object.entries({ ...params, access_token: config.instagram.token })) url.searchParams.set(key, value)
+  for (const [key, value] of Object.entries({ ...params, access_token: config.instagram.token }))
+    url.searchParams.set(key, value)
   const res = await fetch(url, { signal: AbortSignal.timeout(20_000) })
   const body: any = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(`Instagram answered ${res.status}${body.error?.message ? `: ${body.error.message}` : ''}`)
+  if (!res.ok)
+    throw new Error(`Instagram answered ${res.status}${body.error?.message ? `: ${body.error.message}` : ''}`)
   return body
 }
 
 async function hashtagPosts(tag: string): Promise<Post[]> {
   const found = await graph('ig_hashtag_search', { user_id: config.instagram.userId, q: tag })
   if (!found.data?.[0]) return []
-  const recent = await graph(`${found.data[0].id}/recent_media`, { user_id: config.instagram.userId, fields: FIELDS, limit: '50' })
+  const recent = await graph(`${found.data[0].id}/recent_media`, {
+    user_id: config.instagram.userId,
+    fields: FIELDS,
+    limit: '50',
+  })
   return recent.data ?? []
 }
 
@@ -51,7 +64,8 @@ async function asDataUrl(url?: string) {
 }
 
 const seen = (id: string) => Boolean(db.prepare('SELECT 1 FROM seen_posts WHERE post_id = ?').get(id))
-const markSeen = (id: string) => db.prepare('INSERT OR IGNORE INTO seen_posts (post_id, seen_at) VALUES (?, ?)').run(id, Date.now())
+const markSeen = (id: string) =>
+  db.prepare('INSERT OR IGNORE INTO seen_posts (post_id, seen_at) VALUES (?, ?)').run(id, Date.now())
 
 // One run: for every hashtag and account, read new posts and turn the ones about events into drafts.
 export async function scanInstagram(lists?: InstagramLists) {

@@ -33,11 +33,17 @@ test('blocking ends the connection, hides the profile, and stops requests', asyn
 test('reports reach the admin dashboard; only admins can see it', async () => {
   const [hamza, sara] = [await loginAs('hamza'), await loginAs('sara')] // Sara is admin (see helpers.ts)
   assert.equal(await status('/users/areeba/report', json({ reason: 'Nope' }, hamza)), 400)
-  assert.equal(await status('/users/areeba/report', json({ reason: 'Spam or scam', details: 'Sent links' }, hamza)), 201)
+  assert.equal(
+    await status('/users/areeba/report', json({ reason: 'Spam or scam', details: 'Sent links' }, hamza)),
+    201,
+  )
   assert.equal(await status('/admin/overview', { headers: { cookie: hamza } }), 403)
   const dash = await get('/admin/overview', sara)
   assert.equal(dash.totals.openReports, 1)
-  assert.equal(dash.people.some((p: { email: string }) => p.email === 'hamza@comoonly.test'), true)
+  assert.equal(
+    dash.people.some((p: { email: string }) => p.email === 'hamza@comoonly.test'),
+    true,
+  )
   assert.equal(await status(`/admin/reports/${dash.reports[0].id}/resolve`, json({}, sara)), 204)
   assert.equal((await get('/admin/overview', sara)).totals.openReports, 0)
 })
@@ -57,10 +63,19 @@ test('notifications: join requests, acceptance, messages (merged), events by int
   assert.equal((await get('/notifications/unread', hamza)).messages, 0)
 
   // Areeba likes "Making music"/"Films"; a Film event in Sialkot (her city) reaches her, one in Karachi doesn't.
-  const film = { title: 'Films under the stars', date: '2030-06-01T20:00', city: 'Sialkot', category: 'Film',
-    registerUrl: 'https://films.test/1', sourceUrl: 'https://films.test' }
+  const film = {
+    title: 'Films under the stars',
+    date: '2030-06-01T20:00',
+    city: 'Sialkot',
+    category: 'Film',
+    registerUrl: 'https://films.test/1',
+    sourceUrl: 'https://films.test',
+  }
   await fetch(`${base}/events`, json(film, sara))
-  await fetch(`${base}/events`, json({ ...film, title: 'Films in Karachi', city: 'Karachi', registerUrl: 'https://films.test/2' }, sara))
+  await fetch(
+    `${base}/events`,
+    json({ ...film, title: 'Films in Karachi', city: 'Karachi', registerUrl: 'https://films.test/2' }, sara),
+  )
   const texts = (await get('/notifications', areeba)).map((n: { text: string }) => n.text)
   assert.ok(texts.some((t: string) => t.includes('Films under the stars')))
   assert.ok(!texts.some((t: string) => t.includes('Films in Karachi')))
@@ -105,10 +120,25 @@ test('suggest an event: AI reads the post, result waits for review; closed or pa
 
 test('daily tidy-up removes drafts whose event or deadline has passed; published ones stay', async () => {
   const { saveEvent, tidyEvents } = await import('../src/modules/events/events.service.ts')
-  const event = { title: 'Old draft', date: '2001-01-01', deadline: '', city: '', mode: 'Online' as const,
-    category: 'Event', description: '', registerUrl: 'https://old.test/1', sourceUrl: 'https://old.test' }
+  const event = {
+    title: 'Old draft',
+    date: '2001-01-01',
+    deadline: '',
+    city: '',
+    mode: 'Online' as const,
+    category: 'Event',
+    description: '',
+    registerUrl: 'https://old.test/1',
+    sourceUrl: 'https://old.test',
+  }
   saveEvent(event)
-  saveEvent({ ...event, title: 'Deadline passed', date: '2030-01-01', deadline: '2001-01-01', registerUrl: 'https://old.test/2' })
+  saveEvent({
+    ...event,
+    title: 'Deadline passed',
+    date: '2030-01-01',
+    deadline: '2001-01-01',
+    registerUrl: 'https://old.test/2',
+  })
   saveEvent({ ...event, title: 'Old but published', registerUrl: 'https://old.test/3' }, 'published')
   assert.equal(tidyEvents().drafts, 2)
   const { db } = await import('../src/db/connection.ts')

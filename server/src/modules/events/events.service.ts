@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { createGroup } from '../groups/groups.service.ts'
+import { INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
 
@@ -17,7 +18,11 @@ const STILL_ON = "e.starts_at >= ? AND (e.deadline = '' OR e.deadline >= ?)"
 
 // Returns false for a duplicate, so nothing is saved twice. The same event is often listed on several
 // pages (e.g. an online talk on both the Lahore and Karachi pages), so its own link counts too.
-export function saveEvent(input: EventInput, status: 'draft' | 'published' = 'draft', suggestedBy: string | null = null) {
+export function saveEvent(
+  input: EventInput,
+  status: 'draft' | 'published' = 'draft',
+  suggestedBy: string | null = null,
+) {
   const id = randomUUID()
   const result = db
     .prepare(
@@ -26,8 +31,24 @@ export function saveEvent(input: EventInput, status: 'draft' | 'published' = 'dr
        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM events WHERE register_url = ? OR (title = ? AND starts_at = ?))`,
     )
-    .run(id, input.title, input.date, input.deadline, input.city, input.mode, input.category, input.description,
-      input.registerUrl, input.sourceUrl, status, suggestedBy, Date.now(), input.registerUrl, input.title, input.date)
+    .run(
+      id,
+      input.title,
+      input.date,
+      input.deadline,
+      input.city,
+      input.mode,
+      input.category,
+      input.description,
+      input.registerUrl,
+      input.sourceUrl,
+      status,
+      suggestedBy,
+      Date.now(),
+      input.registerUrl,
+      input.title,
+      input.date,
+    )
   if (result.changes && status === 'published') announce(getEvent(id))
   return result.changes > 0
 }
@@ -44,8 +65,9 @@ function interested(interest: string, event: any) {
 // In-person events only go to people in that city (or who haven't set one).
 // shortcut: checks every user in memory, fine for thousands of people, move matching into SQL beyond that.
 function announce(event: any) {
-  const users = db.prepare('SELECT id, city, interests FROM users').all() as any[]
-  const nearby = (city: string) => event.mode !== 'In person' || !event.city || !city || city.toLowerCase() === event.city.toLowerCase()
+  const users = db.prepare(`SELECT u.id, u.city, ${INTERESTS} FROM users u`).all() as any[]
+  const nearby = (city: string) =>
+    event.mode !== 'In person' || !event.city || !city || city.toLowerCase() === event.city.toLowerCase()
   const ids = users
     .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => interested(i, event)))
     .map((u) => u.id)
@@ -65,7 +87,9 @@ export function listDrafts() {
 // and the list of already-read Instagram posts after 30 days. Published events stay, as history.
 export function tidyEvents() {
   const monthAgo = Date.now() - 30 * 86_400_000
-  const drafts = db.prepare(`DELETE FROM events AS e WHERE status = 'draft' AND NOT (${STILL_ON})`).run(today(), today()).changes
+  const drafts = db
+    .prepare(`DELETE FROM events AS e WHERE status = 'draft' AND NOT (${STILL_ON})`)
+    .run(today(), today()).changes
   const rejected = db.prepare("DELETE FROM events WHERE status = 'rejected' AND created_at < ?").run(monthAgo).changes
   db.prepare('DELETE FROM seen_posts WHERE seen_at < ?').run(monthAgo)
   return { drafts, rejected }
@@ -78,8 +102,16 @@ function getEvent(id: string): any {
 }
 
 const COLUMNS: Record<string, string> = {
-  title: 'title', date: 'starts_at', deadline: 'deadline', city: 'city', mode: 'mode', category: 'category',
-  description: 'description', registerUrl: 'register_url', sourceUrl: 'source_url', status: 'status',
+  title: 'title',
+  date: 'starts_at',
+  deadline: 'deadline',
+  city: 'city',
+  mode: 'mode',
+  category: 'category',
+  description: 'description',
+  registerUrl: 'register_url',
+  sourceUrl: 'source_url',
+  status: 'status',
 }
 
 export function updateEvent(id: string, patch: EventPatch) {

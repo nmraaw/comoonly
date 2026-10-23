@@ -1,6 +1,6 @@
-import { db } from '../../db/connection.ts'
+import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { toUser } from '../auth/auth.service.ts'
+import { findUser, INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { hasBlocked, isBlocked } from '../safety/safety.service.ts'
 import type { ProfileInput } from './people.schema.ts'
@@ -22,7 +22,9 @@ export function connectionStatus(viewerId: string, otherId: string) {
 
 // What anyone logged in can see on a profile. Email stays private.
 export function getProfile(id: string, viewerId: string) {
-  const user: any = db.prepare('SELECT id, name, city, tagline, bio, interests FROM users WHERE id = ?').get(id)
+  const user: any = db
+    .prepare(`SELECT u.id, u.name, u.city, u.tagline, u.bio, ${INTERESTS} FROM users u WHERE u.id = ?`)
+    .get(id)
   // Someone who blocked you looks like they don't exist.
   if (!user || hasBlocked(id, viewerId)) throw new HttpError(404, 'Profile not found')
   const groups = db
@@ -42,15 +44,20 @@ export function getProfile(id: string, viewerId: string) {
 
 // Returns the full logged-in user (with email), same shape as /api/auth/me.
 export function updateProfile(id: string, input: ProfileInput) {
-  db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ?, interests = ? WHERE id = ?').run(
-    input.name,
-    input.city,
-    input.tagline,
-    input.bio,
-    JSON.stringify(input.interests),
-    id,
-  )
-  return toUser(db.prepare('SELECT id, name, email, city, tagline, bio, interests FROM users WHERE id = ?').get(id))
+  transaction(() => {
+    db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ? WHERE id = ?').run(
+      input.name,
+      input.city,
+      input.tagline,
+      input.bio,
+      id,
+    )
+    // Replace the whole list: simplest way to keep the picked order.
+    db.prepare('DELETE FROM user_interests WHERE user_id = ?').run(id)
+    const add = db.prepare('INSERT OR IGNORE INTO user_interests (user_id, interest, position) VALUES (?, ?, ?)')
+    input.interests.forEach((interest, position) => add.run(id, interest, position))
+  })
+  return findUser(id)
 }
 
 export function requestConnection(fromId: string, toId: string) {
@@ -67,7 +74,10 @@ export function requestConnection(fromId: string, toId: string) {
 
 export function answerConnection(userId: string, fromId: string, decision: 'accept' | 'decline') {
   const where = "from_id = ? AND to_id = ? AND status = 'pending'"
-  const sql = decision === 'accept' ? `UPDATE connections SET status = 'accepted' WHERE ${where}` : `DELETE FROM connections WHERE ${where}`
+  const sql =
+    decision === 'accept'
+      ? `UPDATE connections SET status = 'accepted' WHERE ${where}`
+      : `DELETE FROM connections WHERE ${where}`
   if (!db.prepare(sql).run(fromId, userId).changes) throw new HttpError(404, 'Request not found')
   if (decision === 'accept') notify(fromId, 'update', `${nameOf(userId)} accepted your connection`, `/users/${userId}`)
   return decision === 'accept' ? 'accepted' : null

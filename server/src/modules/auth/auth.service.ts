@@ -17,13 +17,30 @@ function passwordMatches(password: string, stored: string) {
   return timingSafeEqual(attempt, Buffer.from(hash, 'hex')) // constant-time compare
 }
 
-const PUBLIC_COLUMNS = 'id, name, email, city, tagline, bio, interests'
+// Interests live in their own table (user_interests); this reads them back as one JSON list,
+// in the order the person picked them. `u` is the users table's alias in the surrounding query.
+export const INTERESTS = `(SELECT json_group_array(interest) FROM
+  (SELECT interest FROM user_interests WHERE user_id = u.id ORDER BY position)) AS interests`
+const USER = `u.id, u.name, u.email, u.city, u.tagline, u.bio, ${INTERESTS}`
+
+export function findUser(id: string) {
+  return toUser(db.prepare(`SELECT ${USER} FROM users u WHERE u.id = ?`).get(id))
+}
 
 // The logged-in person as the frontend sees them. Also used by people.service after a profile edit.
 // Lists exactly what goes out, so a new column (like password_hash) can never leak by accident.
 export function toUser(row: any) {
   const { id, name, email, city, tagline, bio } = row
-  return { id, name, email, city, tagline, bio, interests: JSON.parse(row.interests), isAdmin: config.adminEmails.includes(email) }
+  return {
+    id,
+    name,
+    email,
+    city,
+    tagline,
+    bio,
+    interests: JSON.parse(row.interests),
+    isAdmin: config.adminEmails.includes(email),
+  }
 }
 
 export function signup(input: SignupInput) {
@@ -31,10 +48,15 @@ export function signup(input: SignupInput) {
     throw new HttpError(409, 'That email is already registered')
   }
   const id = randomUUID()
-  db.prepare(
-    'INSERT INTO users (id, name, email, password_hash, city, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, input.name, input.email, hashPassword(input.password), input.city, Date.now())
-  return toUser(db.prepare(`SELECT ${PUBLIC_COLUMNS} FROM users WHERE id = ?`).get(id))
+  db.prepare('INSERT INTO users (id, name, email, password_hash, city, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    id,
+    input.name,
+    input.email,
+    hashPassword(input.password),
+    input.city,
+    Date.now(),
+  )
+  return findUser(id)
 }
 
 // After 10 wrong passwords for one email, that email must wait 15 minutes: stops password guessing.
@@ -47,7 +69,7 @@ export function login({ email, password }: LoginInput) {
   if (tries && tries.until > now && tries.count >= 10) {
     throw new HttpError(429, 'Too many tries. Wait 15 minutes, then try again.')
   }
-  const row: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
+  const row: any = db.prepare(`SELECT u.password_hash, ${USER} FROM users u WHERE u.email = ?`).get(email)
   // One message for both cases, so the login form doesn't confirm which emails exist.
   if (!row || !passwordMatches(password, row.password_hash)) {
     const current = tries && tries.until > now ? tries : { count: 0, until: now + 15 * 60_000 }
@@ -68,8 +90,8 @@ export function createSession(userId: string) {
 export function userForToken(token: string) {
   const row = db
     .prepare(
-      `SELECT u.id, u.name, u.email, u.city, u.tagline, u.bio, u.interests FROM sessions s
-       JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?`,
+      `SELECT ${USER} FROM sessions s JOIN users u ON u.id = s.user_id
+       WHERE s.token = ? AND s.expires_at > ?`,
     )
     .get(token, Date.now())
   return row ? toUser(row) : undefined

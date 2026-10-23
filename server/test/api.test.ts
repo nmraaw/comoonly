@@ -6,12 +6,25 @@ test('feed returns seeded groups in the frontend shape, with filters and sorting
   const all = await get('/groups')
   assert.equal(all.length, 6)
   assert.deepEqual(all[0], {
-    id: 'bedroom-musicians', name: 'Bedroom musicians', title: 'Bedroom musicians, let’s make a band.',
-    category: 'Music', description: 'Guitarist looking for a singer & a drummer. Beginners very welcome.',
-    members: 4, spots: 2, location: 'Sialkot', mode: 'In person', owner: 'Areeba R.', ownerId: 'areeba', initials: 'AR', color: 'lilac',
+    id: 'bedroom-musicians',
+    name: 'Bedroom musicians',
+    title: 'Bedroom musicians, let’s make a band.',
+    category: 'Music',
+    description: 'Guitarist looking for a singer & a drummer. Beginners very welcome.',
+    members: 4,
+    spots: 2,
+    location: 'Sialkot',
+    mode: 'In person',
+    owner: 'Areeba R.',
+    ownerId: 'areeba',
+    initials: 'AR',
+    color: 'lilac',
   })
   const creative = await get('/groups?category=Creative&location=Sialkot')
-  assert.deepEqual(creative.map((g: { id: string }) => g.id), ['sunday-sketch'])
+  assert.deepEqual(
+    creative.map((g: { id: string }) => g.id),
+    ['sunday-sketch'],
+  )
   assert.equal((await get('/groups?sort=spots'))[0].id, 'sketch-walks') // 5 spots left, the most
   assert.equal((await get(`/groups?q=${encodeURIComponent('%')}`)).length, 0) // % is literal text, not a wildcard
   assert.equal(await status('/groups?sort=evil'), 400)
@@ -19,10 +32,20 @@ test('feed returns seeded groups in the frontend shape, with filters and sorting
 })
 
 test('signup, create a group, then see it in the feed; logout ends the session', async () => {
-  const group = { name: 'Chess at noon', description: 'Casual games.', category: 'Tech', mode: 'In person', location: 'Campus', spots: 3 }
+  const group = {
+    name: 'Chess at noon',
+    description: 'Casual games.',
+    category: 'Tech',
+    mode: 'In person',
+    location: 'Campus',
+    spots: 3,
+  }
   assert.equal(await status('/groups', json(group)), 401) // must log in first
 
-  const signup = await fetch(`${base}/auth/signup`, json({ name: 'Ali K.', email: 'Ali@Example.com', password: 'longenough' }))
+  const signup = await fetch(
+    `${base}/auth/signup`,
+    json({ name: 'Ali K.', email: 'Ali@Example.com', password: 'longenough' }),
+  )
   assert.equal(signup.status, 201)
   const user = await signup.json()
   assert.equal(user.password_hash, undefined) // the stored hash must never leave the server
@@ -45,9 +68,15 @@ test('signup, create a group, then see it in the feed; logout ends the session',
 
 test('join request: ask, host accepts or declines, member counts follow', async () => {
   // Sara hosts the film club; Areeba is already a member; Hamza and Zain are not.
-  const [sara, areeba, hamza, zain] = [await loginAs('sara'), await loginAs('areeba'), await loginAs('hamza'), await loginAs('zain')]
+  const [sara, areeba, hamza, zain] = [
+    await loginAs('sara'),
+    await loginAs('areeba'),
+    await loginAs('hamza'),
+    await loginAs('zain'),
+  ]
   const ask = (cookie: string) => status('/groups/film-club/requests', json({ intro: 'Hi!' }, cookie))
-  const answer = (userId: string, decision: string) => status(`/groups/film-club/requests/${userId}`, json({ decision }, sara))
+  const answer = (userId: string, decision: string) =>
+    status(`/groups/film-club/requests/${userId}`, json({ decision }, sara))
 
   assert.equal(await status('/groups/film-club/requests', json({ intro: '' }, hamza)), 400)
   assert.equal(await ask(hamza), 201)
@@ -55,7 +84,13 @@ test('join request: ask, host accepts or declines, member counts follow', async 
   assert.equal((await get('/groups/memberships', hamza))['film-club'], 'pending')
   assert.equal(await status('/groups/film-club/requests', { headers: { cookie: areeba } }), 403) // not the host
   const waiting = await get('/groups/film-club/requests', sara)
-  assert.deepEqual(waiting.map((r: { id: string; intro: string }) => [r.id, r.intro]), [['hamza', 'Hi!'], ['zain', 'Hi!']])
+  assert.deepEqual(
+    waiting.map((r: { id: string; intro: string }) => [r.id, r.intro]),
+    [
+      ['hamza', 'Hi!'],
+      ['zain', 'Hi!'],
+    ],
+  )
 
   assert.equal(await answer('hamza', 'accept'), 200)
   assert.equal(await answer('zain', 'decline'), 200)

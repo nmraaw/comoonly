@@ -19,7 +19,9 @@ function findHostedGroup(groupId: string, userId: string) {
 }
 
 function statusOf(groupId: string, userId: string) {
-  const row: any = db.prepare('SELECT status FROM group_members WHERE group_id = ? AND user_id = ?').get(groupId, userId)
+  const row: any = db
+    .prepare('SELECT status FROM group_members WHERE group_id = ? AND user_id = ?')
+    .get(groupId, userId)
   return row?.status as 'pending' | 'joined' | 'declined' | undefined
 }
 
@@ -65,7 +67,8 @@ export function decide(groupId: string, hostId: string, userId: string, decision
   const status = decision === 'accept' ? 'joined' : 'declined'
   db.prepare('UPDATE group_members SET status = ? WHERE group_id = ? AND user_id = ?').run(status, groupId, userId)
   // Only good news is sent. Declined people learn it if they ask again (see requestToJoin).
-  if (status === 'joined') notify(userId, 'update', `You’re in! ${group.name} accepted your request`, `/groups/${groupId}`)
+  if (status === 'joined')
+    notify(userId, 'update', `You’re in! ${group.name} accepted your request`, `/groups/${groupId}`)
   return status
 }
 
@@ -73,5 +76,8 @@ export function decide(groupId: string, hostId: string, userId: string, decision
 export function leave(groupId: string, userId: string) {
   const group = findGroup(groupId)
   if (group.ownerId === userId) throw new HttpError(409, 'You host this group, so you can’t leave it')
-  db.prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status IN ('pending', 'joined')").run(groupId, userId)
+  db.prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status IN ('pending', 'joined')").run(
+    groupId,
+    userId,
+  )
 }

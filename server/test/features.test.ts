@@ -12,15 +12,27 @@ test('connections, then direct messages only between connected people', async ()
   assert.equal(await status('/messages/with/zain', json({ text: 'hey' }, hira)), 403) // not connected yet
   assert.equal((await (await fetch(`${base}/users/zain/connect`, json({}, hira))).json()).status, 'pending')
   assert.equal((await get('/users/hira', zain)).connection, 'incoming')
-  assert.deepEqual((await get('/connections', zain)).incoming.map((u: { id: string }) => u.id), ['hira'])
+  assert.deepEqual(
+    (await get('/connections', zain)).incoming.map((u: { id: string }) => u.id),
+    ['hira'],
+  )
 
   assert.equal(await status('/connections/hira', json({ decision: 'accept' }, zain)), 200)
   assert.equal(await status('/messages/with/zain', json({ text: 'hey zain' }, hira)), 201)
   assert.equal(await status('/messages/with/hira', json({ text: 'hi!' }, zain)), 201)
   const chat = await get('/messages/with/hira', zain)
-  assert.deepEqual(chat.map((m: { author: string; text: string }) => [m.author, m.text]), [['Hira S.', 'hey zain'], ['Zain A.', 'hi!']])
+  assert.deepEqual(
+    chat.map((m: { author: string; text: string }) => [m.author, m.text]),
+    [
+      ['Hira S.', 'hey zain'],
+      ['Zain A.', 'hi!'],
+    ],
+  )
   const people = (await get('/messages', zain)).people
-  assert.deepEqual(people.map((p: { id: string; last: string }) => [p.id, p.last]), [['hira', 'hi!']])
+  assert.deepEqual(
+    people.map((p: { id: string; last: string }) => [p.id, p.last]),
+    [['hira', 'hi!']],
+  )
   assert.equal(await status('/users/zain/connect', json({}, zain)), 400) // can't connect with yourself
 })
 
@@ -35,7 +47,11 @@ test('group chat, activities and to-dos are for members only', async () => {
   const activity = await (await fetch(`${base}/groups/tiny-game/activities`, json(plan, hira))).json()
   const going = await (await fetch(`${base}/activities/${activity.id}/going`, json({}, hira))).json()
   assert.deepEqual([going.going, going.goingCount], [true, 1])
-  assert.deepEqual(await get(`/activities/${activity.id}`, zain), { id: activity.id, groupId: 'tiny-game', locked: true })
+  assert.deepEqual(await get(`/activities/${activity.id}`, zain), {
+    id: activity.id,
+    groupId: 'tiny-game',
+    locked: true,
+  })
   assert.equal(await status(`/activities/${activity.id}/going`, json({}, zain)), 403)
 
   const tasks = await (await fetch(`${base}/groups/tiny-game/tasks`, json({ title: 'Pick a mechanic' }, hira))).json()
@@ -54,17 +70,35 @@ test('event finder reads JSON-LD and drops past or malformed events', () => {
     {"item":{"@type":"Event","name":"Old meetup","startDate":"2001-01-01","url":"https://x.test/old"}},
     {"item":{"@type":"Event","name":"No date","url":"https://x.test/nodate"}}]}</script>
     <script type="application/ld+json">{broken json</script></html>`
-  const found = cleanEvents(eventsFromJsonLd(html, 'https://events.test/list'), { name: 'test', url: 'https://events.test/list' })
-  assert.deepEqual(found, [{
-    title: 'Lahore Hackathon', date: `${soon(60)}T10:00:00+05:00`, city: 'Lahore', mode: 'In person', category: 'Hackathon',
-    description: '', deadline: '', registerUrl: 'https://events.test/e/1', sourceUrl: 'https://events.test/list',
-  }])
+  const found = cleanEvents(eventsFromJsonLd(html, 'https://events.test/list'), {
+    name: 'test',
+    url: 'https://events.test/list',
+  })
+  assert.deepEqual(found, [
+    {
+      title: 'Lahore Hackathon',
+      date: `${soon(60)}T10:00:00+05:00`,
+      city: 'Lahore',
+      mode: 'In person',
+      category: 'Hackathon',
+      description: '',
+      deadline: '',
+      registerUrl: 'https://events.test/e/1',
+      sourceUrl: 'https://events.test/list',
+    },
+  ])
 })
 
 test('admins publish events; anyone can find people to go with', async () => {
   const [sara, hira, zain] = [await loginAs('sara'), await loginAs('hira'), await loginAs('zain')] // Sara is admin
-  const event = { title: 'Karachi Code Jam', date: '2030-02-01T09:00', city: 'Karachi', category: 'Hackathon',
-    registerUrl: 'https://jam.test/register', sourceUrl: 'https://jam.test' }
+  const event = {
+    title: 'Karachi Code Jam',
+    date: '2030-02-01T09:00',
+    city: 'Karachi',
+    category: 'Hackathon',
+    registerUrl: 'https://jam.test/register',
+    sourceUrl: 'https://jam.test',
+  }
   assert.equal(await status('/events', json(event, hira)), 403) // not an admin
   assert.equal(await status('/events', json({ ...event, registerUrl: 'javascript:alert(1)' }, sara)), 400)
   assert.equal(await status('/events', json(event, sara)), 201)

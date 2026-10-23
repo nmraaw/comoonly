@@ -20,7 +20,12 @@ const SORTS = {
 const COLORS = ['lilac', 'mint', 'pink']
 
 function initials(name: string) {
-  return name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 }
 
 function toPreview(row: any) {
@@ -59,7 +64,10 @@ export function listGroups(query: ListQuery) {
   }
   const sql = `${SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     GROUP BY g.id ORDER BY ${SORTS[query.sort]} LIMIT ? OFFSET ?`
-  return db.prepare(sql).all(...params, query.limit, query.offset).map(toPreview)
+  return db
+    .prepare(sql)
+    .all(...params, query.limit, query.offset)
+    .map(toPreview)
 }
 
 export function getGroup(id: string) {
@@ -77,7 +85,9 @@ export function requireMember(groupId: string, userId: string) {
 
 export function isMember(groupId: string, userId: string) {
   return Boolean(
-    db.prepare("SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'joined'").get(groupId, userId),
+    db
+      .prepare("SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'joined'")
+      .get(groupId, userId),
   )
 }
 
@@ -93,7 +103,10 @@ export function listMembers(groupId: string, viewerId: string) {
 }
 
 export function savedGroupIds(userId: string) {
-  return db.prepare('SELECT group_id FROM saved_groups WHERE user_id = ?').all(userId).map((r: any) => r.group_id)
+  return db
+    .prepare('SELECT group_id FROM saved_groups WHERE user_id = ?')
+    .all(userId)
+    .map((r: any) => r.group_id)
 }
 
 // Saving twice un-saves, like the bookmark button.
@@ -113,8 +126,19 @@ export function createGroup(ownerId: string, input: CreateGroupInput) {
     db.prepare(
       `INSERT INTO groups (id, owner_id, name, title, description, category, mode, location, capacity, color, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, ownerId, input.name, input.name, input.description, input.category, input.mode, location,
-      input.spots + 1, color, Date.now())
+    ).run(
+      id,
+      ownerId,
+      input.name,
+      input.name,
+      input.description,
+      input.category,
+      input.mode,
+      location,
+      input.spots + 1,
+      color,
+      Date.now(),
+    )
     db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?, ?)').run(id, ownerId)
   })
   return getGroup(id)!

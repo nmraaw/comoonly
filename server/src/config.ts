@@ -1,5 +1,9 @@
 // Everything that differs between your laptop and a deployed server comes from environment variables.
-const list = (value = '') => value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+const list = (value = '') =>
+  value
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),

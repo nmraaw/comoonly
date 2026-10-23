@@ -26,7 +26,8 @@ eventRoutes.post('/suggest', requireAuth, async (req: any, res) => {
   const now = Date.now()
   const used = suggestions.get(req.user.id)
   const current = used && used.until > now ? used : { count: 0, until: now + 86_400_000 }
-  if (!req.user.isAdmin && current.count >= 10) throw new HttpError(429, 'That’s 10 suggestions today. Thank you! Try again tomorrow.')
+  if (!req.user.isAdmin && current.count >= 10)
+    throw new HttpError(429, 'That’s 10 suggestions today. Thank you! Try again tomorrow.')
   suggestions.set(req.user.id, { ...current, count: current.count + 1 })
   res.json(await eventsFromPost(post, req.user.id))
 })
@@ -40,7 +41,6 @@ eventRoutes.get('/review', requireAuth, requireAdmin, (_req, res) => {
 eventRoutes.post('/scan', requireAuth, requireAdmin, async (_req, res) => {
   res.json(await scanSources())
 })
-
 
 // An admin adding an event by hand publishes it straight away.
 eventRoutes.post('/', requireAuth, requireAdmin, (req, res) => {

@@ -25,7 +25,10 @@ Never invent links or dates. Reply [] if there are none.`
 export async function askAi(content: string | object[]): Promise<Candidate[]> {
   const res = await fetch(`${config.ai.baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(config.ai.apiKey && { authorization: `Bearer ${config.ai.apiKey}` }) },
+    headers: {
+      'content-type': 'application/json',
+      ...(config.ai.apiKey && { authorization: `Bearer ${config.ai.apiKey}` }),
+    },
     body: JSON.stringify({
       model: config.ai.model,
       temperature: 0,

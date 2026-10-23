@@ -1,6 +1,12 @@
 import { z } from 'zod'
 
-export const REASONS = ['Harassment', 'Spam or scam', 'Fake profile', 'Felt unsafe at a meetup', 'Something else'] as const
+export const REASONS = [
+  'Harassment',
+  'Spam or scam',
+  'Fake profile',
+  'Felt unsafe at a meetup',
+  'Something else',
+] as const
 
 export const reportSchema = z.object({
   reason: z.enum(REASONS, 'Pick a reason'),

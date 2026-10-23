@@ -30,9 +30,14 @@ export function notify(userIds: string | string[], kind: Kind, text: string, lin
 
 export function listNotifications(userId: string) {
   // Old read notices are cleared out so the table doesn't grow forever.
-  db.prepare('DELETE FROM notifications WHERE user_id = ? AND read = 1 AND created_at < ?').run(userId, Date.now() - 60 * 86_400_000)
+  db.prepare('DELETE FROM notifications WHERE user_id = ? AND read = 1 AND created_at < ?').run(
+    userId,
+    Date.now() - 60 * 86_400_000,
+  )
   return db
-    .prepare('SELECT id, kind, text, link, read, created_at AS createdAt FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50')
+    .prepare(
+      'SELECT id, kind, text, link, read, created_at AS createdAt FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+    )
     .all(userId)
     .map((n: any) => ({ ...n, read: Boolean(n.read) }))
 }
@@ -40,7 +45,9 @@ export function listNotifications(userId: string) {
 // For the badges: total unread, and how many of those are messages.
 export function unreadCounts(userId: string) {
   const row: any = db
-    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(kind = 'message'), 0) AS messages FROM notifications WHERE user_id = ? AND read = 0")
+    .prepare(
+      "SELECT COUNT(*) AS total, COALESCE(SUM(kind = 'message'), 0) AS messages FROM notifications WHERE user_id = ? AND read = 0",
+    )
     .get(userId)
   return { total: row.total, messages: row.messages }
 }
