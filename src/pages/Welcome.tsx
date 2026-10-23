@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import type { Me } from '../types'
 import { api } from '../api'
@@ -48,6 +49,13 @@ export default function Welcome() {
         <button className="button" onClick={() => setMode('login')}>
           I already have an account
         </button>
+        <p className="hint">
+          By continuing, you agree to our{' '}
+          <Link className="text-button" to="/privacy">
+            privacy &amp; community guidelines
+          </Link>
+          .
+        </p>
       </>
     )
   }

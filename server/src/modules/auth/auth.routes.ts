@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { clearSessionCookie, requireAuth, setSessionCookie } from '../../middleware/auth.ts'
-import { loginSchema, signupSchema } from './auth.schema.ts'
-import { createSession, endSession, login, signup } from './auth.service.ts'
+import { deleteAccountSchema, loginSchema, signupSchema } from './auth.schema.ts'
+import { createSession, deleteAccount, endSession, login, signup } from './auth.service.ts'
 
 export const authRoutes = Router()
 
@@ -26,4 +26,11 @@ authRoutes.post('/logout', (req: any, res) => {
 // The frontend calls this on page load to learn who (if anyone) is logged in.
 authRoutes.get('/me', requireAuth, (req: any, res) => {
   res.json(req.user)
+})
+
+// "Delete my account" on the Me tab. Everything about the person is removed; there's no undo.
+authRoutes.delete('/me', requireAuth, (req: any, res) => {
+  deleteAccount(req.user.id, deleteAccountSchema.parse(req.body).password)
+  clearSessionCookie(res)
+  res.status(204).end()
 })

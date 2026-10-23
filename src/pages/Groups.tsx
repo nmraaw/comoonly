@@ -6,6 +6,7 @@ export default function Groups() {
   const [params, setParams] = useSearchParams()
   const id = params.get('group')
   const view = params.get('view') === 'requests' ? 'Requests' : 'Active'
+  const count = (status: string) => Object.values(membership).filter((s) => s === status).length
   if (id)
     return (
       <Navigate
@@ -30,11 +31,12 @@ export default function Groups() {
         <br />
         are a group thing.
       </h1>
+      {/* Tab labels show counts, like "Active · 3", as in the Figma design. */}
       <Chips
         label="Your groups"
-        values={['Active', 'Requests']}
-        value={view}
-        onChange={(v) => setParams(v === 'Requests' ? { view: 'requests' } : {})}
+        values={[`Active · ${count('joined')}`, `Requests · ${count('pending')}`]}
+        value={`${view} · ${count(view === 'Active' ? 'joined' : 'pending')}`}
+        onChange={(v) => setParams(v.startsWith('Requests') ? { view: 'requests' } : {})}
       />
       <div className="stack">
         {groups

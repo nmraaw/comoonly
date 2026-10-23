@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import NotFound from './components/NotFound'
 import PostDetail from './pages/PostDetail'
@@ -17,17 +17,21 @@ import EventsReview from './pages/EventsReview'
 import Notifications from './pages/Notifications'
 import Admin from './pages/Admin'
 import SuggestEvent from './pages/SuggestEvent'
+import Privacy from './pages/Privacy'
 import AppProvider from './state/AppProvider'
 import { useApp } from './state/AppContext'
 import './App.css'
-// Logged out → Welcome. New account without interests → profile setup. Otherwise the app.
+// The privacy page is open to everyone. Otherwise: logged out → Welcome, new account → profile setup, else the app.
 function Gate() {
   const { me } = useApp()
+  const { pathname } = useLocation()
   if (me === undefined) return null // checking the session; avoids flashing the login screen
-  if (!me || !me.interests.length)
+  if (pathname === '/privacy' || !me || !me.interests.length)
     return (
       <div className="app-shell">
-        <main id="main-content">{me ? <ProfileSetup first /> : <Welcome />}</main>
+        <main id="main-content">
+          {pathname === '/privacy' ? <Privacy /> : me ? <ProfileSetup first /> : <Welcome />}
+        </main>
       </div>
     )
   return (

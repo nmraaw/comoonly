@@ -38,6 +38,12 @@ test('reports reach the admin dashboard; only admins can see it', async () => {
     201,
   )
   assert.equal(await status('/admin/overview', { headers: { cookie: hamza } }), 403)
+  assert.equal(await status('/admin/backup', { headers: { cookie: hamza } }), 403)
+  assert.equal(await status('/admin/users/nm', { method: 'DELETE', headers: { cookie: hamza } }), 403)
+  assert.equal(await status('/admin/users/nm', { method: 'DELETE', headers: { cookie: sara } }), 204) // a data-deletion request
+  assert.equal(await status('/users/nm', { headers: { cookie: hamza } }), 404)
+  const backup = Buffer.from(await (await fetch(`${base}/admin/backup`, { headers: { cookie: sara } })).arrayBuffer())
+  assert.equal(backup.subarray(0, 15).toString(), 'SQLite format 3') // a real, complete database file
   const dash = await get('/admin/overview', sara)
   assert.equal(dash.totals.openReports, 1)
   assert.equal(

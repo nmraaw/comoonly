@@ -103,3 +103,11 @@ export function userForToken(token: string) {
 export function endSession(token: string) {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
 }
+
+// Deletes the person and, through the database's ON DELETE rules, everything that only makes sense with
+// them: profile, interests, sessions, messages, memberships, groups they host. Events they suggested stay.
+export function deleteAccount(userId: string, password: string) {
+  const row: any = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId)
+  if (!row || !passwordMatches(password, row.password_hash)) throw new HttpError(401, 'That password isn’t right')
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId)
+}

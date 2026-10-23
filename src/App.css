@@ -912,3 +912,33 @@ input[type='file']::file-selector-button {
 .group-art p {
   padding-right: 96px;
 }
+/* Privacy & guidelines page */
+.policy ul {
+  padding-left: 18px;
+  margin: 8px 0;
+}
+.policy li {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 6px 0;
+}
+.policy p {
+  font-size: 13px;
+  line-height: 1.55;
+}
+/* A connection's chat card: their mascot on the left, like "15 · Messages" in Figma */
+.person-chat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.person-chat .mascot {
+  width: 64px;
+  flex: none;
+}
+.member-row > a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

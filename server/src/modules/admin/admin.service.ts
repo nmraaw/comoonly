@@ -1,3 +1,6 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 
@@ -41,8 +44,21 @@ export function overview() {
   }
 }
 
+// For "please delete my data" emails (see the privacy page). Same effect as the person deleting it themselves.
+export function deleteUser(id: string) {
+  if (!db.prepare('DELETE FROM users WHERE id = ?').run(id).changes) throw new HttpError(404, 'Person not found')
+}
+
 export function resolveReport(id: string) {
   if (!db.prepare("UPDATE reports SET status = 'resolved' WHERE id = ?").run(id).changes) {
     throw new HttpError(404, 'Report not found')
   }
+}
+
+// A complete, consistent copy of the database as one file (SQLite's VACUUM INTO), for the dashboard's
+// "Download a backup" button. It holds everyone's data, so only admins can get it (see admin.routes.ts).
+export function backupFile() {
+  const file = join(mkdtempSync(join(tmpdir(), 'comoonly-')), `comoonly-${new Date().toISOString().slice(0, 10)}.db`)
+  db.prepare('VACUUM INTO ?').run(file)
+  return file
 }

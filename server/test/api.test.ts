@@ -31,7 +31,7 @@ test('feed returns seeded groups in the frontend shape, with filters and sorting
   assert.equal(await status('/groups/nope'), 404)
 })
 
-test('signup, create a group, then see it in the feed; logout ends the session', async () => {
+test('signup, create a group, logout, delete account', async () => {
   const group = {
     name: 'Chess at noon',
     description: 'Casual games.',
@@ -64,6 +64,14 @@ test('signup, create a group, then see it in the feed; logout ends the session',
 
   assert.equal(await status('/auth/logout', json({}, cookie)), 204)
   assert.equal(await status('/auth/me', { headers: { cookie } }), 401) // old cookie is dead
+
+  // Deleting the account needs the password, then removes the person and the group they host.
+  const again = login.headers.get('set-cookie')!.split(';')[0]
+  assert.equal(await status('/auth/me', json({ password: 'wrong' }, again, 'DELETE')), 401)
+  assert.equal(await status('/auth/me', json({ password: 'longenough' }, again, 'DELETE')), 204)
+  assert.equal(await status('/auth/me', { headers: { cookie: again } }), 401)
+  assert.equal(await status(`/groups/${created.id}`), 404)
+  assert.equal(await status('/auth/login', json({ email: 'ali@example.com', password: 'longenough' })), 401)
 })
 
 test('join request: ask, host accepts or declines, member counts follow', async () => {

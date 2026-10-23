@@ -95,16 +95,6 @@ It is tested against a stand-in for Meta's API, not the real one yet: expect sma
 
 ## Put it online
 
-The production server serves both the API and the built website from one address, so logins just work.
-
-```bash
-npm install
-npm run build             # builds the website into dist/
-npm start                 # production mode on $PORT (default 3001)
-```
-
-On a host such as Render or Railway: build command `npm install && npm run build`, start command
-`npm start`. SQLite is a file, so attach a **persistent disk** and set `DB_PATH` to a file on it
-(for example `/var/data/comoonly.db`); without it, data is lost on every deploy. Set `ADMIN_EMAILS`
-(and the AI settings, if used) in the host's environment settings. The site must be served over https,
-because the login cookie is marked Secure in production.
+Step-by-step for GitHub and hosting (Railway, with a permanent disk for the database), how to use
+your admin tools, and where users' data is stored: **[docs/RUNNING.md](docs/RUNNING.md)**.
+The data model and its design decisions: **[docs/DATABASE.md](docs/DATABASE.md)**.

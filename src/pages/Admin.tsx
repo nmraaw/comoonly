@@ -53,6 +53,16 @@ export default function Admin() {
     }
     reload()
   }
+  // For data-deletion requests sent to the contact email on the privacy page.
+  async function deletePerson(id: string, name: string) {
+    if (!confirm(`Delete ${name}'s account and all their data? This can't be undone.`)) return
+    try {
+      await api('/admin/users/' + id, { method: 'DELETE' })
+    } catch (err) {
+      alert((err as Error).message)
+    }
+    reload()
+  }
   const t = data?.totals
   const q = search.toLowerCase()
   return (
@@ -86,6 +96,10 @@ export default function Admin() {
           Review {t.drafts} new events →
         </Link>
       )}
+      {/* A full copy of the database: keep it somewhere private, it holds everyone's data. */}
+      <a className="button" href="/api/admin/backup" download>
+        Download a backup
+      </a>
       <Chips label="Dashboard section" values={['People', 'Events', 'Reports']} value={tab} onChange={setTab} />
       {tab !== 'Reports' && (
         <label className="search">
@@ -102,16 +116,21 @@ export default function Admin() {
           data?.people
             .filter((p) => (p.name + ' ' + p.email + ' ' + p.city).toLowerCase().includes(q))
             .map((p) => (
-              <Link className="member-row" key={p.id} to={'/users/' + p.id}>
-                <span>
+              <div className="member-row" key={p.id}>
+                <Link to={'/users/' + p.id}>
                   <strong>{p.name}</strong>
                   <small>
                     {p.email}
                     {p.city ? ' · ' + p.city : ''} · joined {day(p.joinedAt)} · {p.groups}{' '}
                     {p.groups === 1 ? 'group' : 'groups'}
                   </small>
-                </span>
-              </Link>
+                </Link>
+                {p.id !== me!.id && (
+                  <button className="text-button" onClick={() => deletePerson(p.id, p.name)}>
+                    Delete
+                  </button>
+                )}
+              </div>
             ))}
         {tab === 'Events' &&
           data?.events

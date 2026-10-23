@@ -15,5 +15,10 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(100),
 })
 
+// Deleting your account asks for your password again, so nobody can do it from a borrowed phone.
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Enter your password').max(100),
+})
+
 export type SignupInput = z.infer<typeof signupSchema>
 export type LoginInput = z.infer<typeof loginSchema>

@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import type { User } from '../types'
 import { api, useApi } from '../api'
-import { Chips, Empty, Avatar } from '../components/UI'
+import { Avatar, Chips, Empty, Mascot } from '../components/UI'
 import Chat from '../components/Chat'
 import NotFound from '../components/NotFound'
 import DetailHeader from '../components/DetailHeader'
@@ -100,11 +100,11 @@ export default function Messages() {
         <div className="stack">
           {tab === 'All' &&
             list.data?.people.map((p) => (
-              <Link className="conversation lilac" key={p.id} to={'?chat=' + p.id}>
-                <Avatar name={p.name} />
+              <Link className="conversation lilac person-chat" key={p.id} to={'?chat=' + p.id}>
+                <Mascot seed={p.id} />
                 <div>
                   <h2>{p.name}</h2>
-                  <p>{p.last || 'Say hello'}</p>
+                  <p>{p.last || 'Accepted connection · say hello'}</p>
                 </div>
               </Link>
             ))}
