@@ -37,12 +37,24 @@ export function signup(input: SignupInput) {
   return toUser(db.prepare(`SELECT ${PUBLIC_COLUMNS} FROM users WHERE id = ?`).get(id))
 }
 
+// After 10 wrong passwords for one email, that email must wait 15 minutes: stops password guessing.
+// shortcut: counted in memory (resets on restart, one server only), move to the database if you run several servers.
+const failures = new Map<string, { count: number; until: number }>()
+
 export function login({ email, password }: LoginInput) {
+  const now = Date.now()
+  const tries = failures.get(email)
+  if (tries && tries.until > now && tries.count >= 10) {
+    throw new HttpError(429, 'Too many tries. Wait 15 minutes, then try again.')
+  }
   const row: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
-  // One message for both cases, so nobody can use the form to discover which emails exist.
+  // One message for both cases, so the login form doesn't confirm which emails exist.
   if (!row || !passwordMatches(password, row.password_hash)) {
+    const current = tries && tries.until > now ? tries : { count: 0, until: now + 15 * 60_000 }
+    failures.set(email, { ...current, count: current.count + 1 })
     throw new HttpError(401, 'Wrong email or password')
   }
+  failures.delete(email)
   return toUser(row)
 }
 

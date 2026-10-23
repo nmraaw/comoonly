@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { config } from '../../config.ts'
+import { HttpError } from '../../middleware/errors.ts'
 import { eventSchema, type EventInput } from './events.schema.ts'
 import { saveEvent } from './events.service.ts'
 
@@ -68,9 +69,9 @@ Reply with ONLY a JSON array, no other text. Each item:
  "description": short summary under 300 characters, "registerUrl": the official registration link as a full URL}
 Only include events that are really on the page. Never invent links or dates. Reply [] if there are none.`
 
-// Fallback for pages without structured data. Only runs when an AI provider is configured (see config.ts).
-async function eventsFromAi(html: string, pageUrl: string): Promise<Candidate[]> {
-  if (!config.ai.baseUrl) return []
+// Sends text (and optionally an image) to the configured AI and returns the events it found.
+// Works with any OpenAI-compatible provider: Gemini, Groq, Ollama... (see .env.example).
+async function askAi(content: string | object[]): Promise<Candidate[]> {
   const res = await fetch(`${config.ai.baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(config.ai.apiKey && { authorization: `Bearer ${config.ai.apiKey}` }) },
@@ -79,15 +80,33 @@ async function eventsFromAi(html: string, pageUrl: string): Promise<Candidate[]>
       temperature: 0,
       messages: [
         { role: 'system', content: PROMPT },
-        { role: 'user', content: `Page: ${pageUrl}\n\n${stripTags(html).slice(0, 12_000)}` },
+        { role: 'user', content },
       ],
     }),
     signal: AbortSignal.timeout(60_000),
   })
-  if (!res.ok) throw new Error(`AI provider answered ${res.status}`)
+  if (!res.ok) throw new HttpError(502, `The AI service answered ${res.status}. Try again in a minute.`)
   const reply = String((await res.json()).choices?.[0]?.message?.content ?? '')
-  const items = JSON.parse(reply.slice(reply.indexOf('['), reply.lastIndexOf(']') + 1) || '[]')
-  return Array.isArray(items) ? items : []
+  try {
+    const items = JSON.parse(reply.slice(reply.indexOf('['), reply.lastIndexOf(']') + 1))
+    return Array.isArray(items) ? items : []
+  } catch {
+    return [] // the AI didn't answer with a list: treat it as "nothing found"
+  }
+}
+
+// Admin pastes an Instagram/TikTok post (caption and/or poster screenshot). Found events become drafts for review.
+// We never scrape those sites: their terms forbid it, and they block it anyway.
+export async function eventsFromPost(post: { postUrl: string; text: string; image?: string }) {
+  if (!config.ai.baseUrl) throw new HttpError(400, 'Add an AI provider in .env first (see .env.example)')
+  const content = [
+    { type: 'text', text: `Social media post: ${post.postUrl}\n\n${post.text || '(no caption: read the image)'}` },
+    ...(post.image ? [{ type: 'image_url', image_url: { url: post.image } }] : []),
+  ]
+  // A poster often has no link; then the post itself is where people find out more.
+  const candidates = (await askAi(content)).map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
+  const events = cleanEvents(candidates, { name: 'post', url: post.postUrl })
+  return { found: events.length, added: events.filter((e) => saveEvent(e)).length }
 }
 
 // Checks every candidate; keeps only well-formed events that haven't happened yet.
@@ -121,8 +140,8 @@ export async function scanSources() {
       let via = 'structured data'
       let candidates = eventsFromJsonLd(html, source.url)
       if (!candidates.length && config.ai.baseUrl) {
-        via = 'AI'
-        candidates = await eventsFromAi(html, source.url)
+        via = 'AI' // pages without structured data: let the AI read the visible text
+        candidates = await askAi(`Page: ${source.url}\n\n${stripTags(html).slice(0, 12_000)}`)
       }
       const events = cleanEvents(candidates, source)
       const added = events.filter((e) => saveEvent(e)).length

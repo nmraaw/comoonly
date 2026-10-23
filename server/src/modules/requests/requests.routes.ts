@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { decisionSchema, joinSchema } from './requests.schema.ts'
-import { decide, listRequests, myMemberships, requestToJoin } from './requests.service.ts'
+import { decide, leave, listRequests, myMemberships, requestToJoin } from './requests.service.ts'
 
 // Mounted at /api/groups, before the groups routes, so /memberships isn't read as a group id.
 // requireAuth sits on each route (not router.use) so the public group feed stays public.
@@ -24,4 +24,9 @@ requestRoutes.get('/:id/requests', requireAuth, (req: any, res) => {
 requestRoutes.post('/:id/requests/:userId', requireAuth, (req: any, res) => {
   const { decision } = decisionSchema.parse(req.body)
   res.json({ status: decide(req.params.id, req.user.id, req.params.userId, decision) })
+})
+
+requestRoutes.post('/:id/leave', requireAuth, (req: any, res) => {
+  leave(req.params.id, req.user.id)
+  res.status(204).end()
 })

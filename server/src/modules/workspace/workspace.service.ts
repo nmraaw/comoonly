@@ -2,10 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { isMember, requireMember } from '../groups/groups.service.ts'
+import { notify } from '../notifications/notifications.service.ts'
+import { nameOf } from '../people/people.service.ts'
 import type { ActivityInput } from './workspace.schema.ts'
 
 // `going` = whether the person asking has said "I'm going".
-const ACTIVITY = `SELECT a.id, a.group_id AS groupId, a.title, a.starts_at AS date, a.place,
+const ACTIVITY = `SELECT a.id, a.group_id AS groupId, a.title, a.starts_at AS date, a.place, a.plan, a.notes,
     (SELECT COUNT(*) FROM rsvps r WHERE r.activity_id = a.id) AS goingCount,
     EXISTS (SELECT 1 FROM rsvps r WHERE r.activity_id = a.id AND r.user_id = ?) AS going
   FROM activities a`
@@ -26,11 +28,16 @@ export function getActivity(id: string, userId: string) {
 }
 
 export function addActivity(groupId: string, userId: string, input: ActivityInput) {
-  requireMember(groupId, userId)
+  const group = requireMember(groupId, userId)
   const id = randomUUID()
   db.prepare(
-    'INSERT INTO activities (id, group_id, title, starts_at, place, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, groupId, input.title, input.date, input.place, userId, Date.now())
+    'INSERT INTO activities (id, group_id, title, starts_at, place, plan, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, groupId, input.title, input.date, input.place, input.plan, input.notes, userId, Date.now())
+  const others = db
+    .prepare("SELECT user_id FROM group_members WHERE group_id = ? AND status = 'joined' AND user_id != ?")
+    .all(groupId, userId)
+    .map((r: any) => r.user_id)
+  notify(others, 'update', `${nameOf(userId)} planned “${input.title}” in ${group.name}`, `/activities/${id}`)
   return getActivity(id, userId)
 }
 

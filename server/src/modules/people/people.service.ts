@@ -1,7 +1,14 @@
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { toUser } from '../auth/auth.service.ts'
+import { notify } from '../notifications/notifications.service.ts'
+import { hasBlocked, isBlocked } from '../safety/safety.service.ts'
 import type { ProfileInput } from './people.schema.ts'
+
+// For notification texts like "Ali wants to connect".
+export function nameOf(userId: string) {
+  return (db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as any)?.name ?? 'Someone'
+}
 
 // How `viewer` is connected to `other`, from the viewer's side.
 export function connectionStatus(viewerId: string, otherId: string) {
@@ -16,14 +23,21 @@ export function connectionStatus(viewerId: string, otherId: string) {
 // What anyone logged in can see on a profile. Email stays private.
 export function getProfile(id: string, viewerId: string) {
   const user: any = db.prepare('SELECT id, name, city, tagline, bio, interests FROM users WHERE id = ?').get(id)
-  if (!user) throw new HttpError(404, 'Profile not found')
+  // Someone who blocked you looks like they don't exist.
+  if (!user || hasBlocked(id, viewerId)) throw new HttpError(404, 'Profile not found')
   const groups = db
     .prepare(
       `SELECT g.id, g.name FROM group_members m JOIN groups g ON g.id = m.group_id
        WHERE m.user_id = ? AND m.status = 'joined' ORDER BY m.rowid`,
     )
     .all(id)
-  return { ...user, interests: JSON.parse(user.interests), groups, connection: connectionStatus(viewerId, id) }
+  return {
+    ...user,
+    interests: JSON.parse(user.interests),
+    groups,
+    connection: connectionStatus(viewerId, id),
+    blocked: hasBlocked(viewerId, id), // you blocked them: the page offers Unblock
+  }
 }
 
 // Returns the full logged-in user (with email), same shape as /api/auth/me.
@@ -42,10 +56,12 @@ export function updateProfile(id: string, input: ProfileInput) {
 export function requestConnection(fromId: string, toId: string) {
   if (fromId === toId) throw new HttpError(400, 'You can’t connect with yourself')
   if (!db.prepare('SELECT 1 FROM users WHERE id = ?').get(toId)) throw new HttpError(404, 'Profile not found')
+  if (isBlocked(fromId, toId)) throw new HttpError(403, 'You can’t connect with this person')
   const status = connectionStatus(fromId, toId)
   if (status === 'incoming') return answerConnection(fromId, toId, 'accept') // they already asked you: that's a yes
   if (status) return status
   db.prepare('INSERT INTO connections (from_id, to_id, created_at) VALUES (?, ?, ?)').run(fromId, toId, Date.now())
+  notify(toId, 'update', `${nameOf(fromId)} wants to connect`, '/messages?view=Requests')
   return 'pending'
 }
 
@@ -53,6 +69,7 @@ export function answerConnection(userId: string, fromId: string, decision: 'acce
   const where = "from_id = ? AND to_id = ? AND status = 'pending'"
   const sql = decision === 'accept' ? `UPDATE connections SET status = 'accepted' WHERE ${where}` : `DELETE FROM connections WHERE ${where}`
   if (!db.prepare(sql).run(fromId, userId).changes) throw new HttpError(404, 'Request not found')
+  if (decision === 'accept') notify(fromId, 'update', `${nameOf(userId)} accepted your connection`, `/users/${userId}`)
   return decision === 'accept' ? 'accepted' : null
 }
 

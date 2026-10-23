@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { createGroup } from '../groups/groups.service.ts'
+import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
 
 const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.city, e.mode, e.category, e.description,
@@ -12,15 +13,37 @@ const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.city, e.mode, e.cat
 // Returns false for a duplicate, so nothing is saved twice. The same event is often listed on several
 // pages (e.g. an online talk on both the Lahore and Karachi pages), so its own link counts too.
 export function saveEvent(input: EventInput, status: 'draft' | 'published' = 'draft') {
+  const id = randomUUID()
   const result = db
     .prepare(
       `INSERT OR IGNORE INTO events (id, title, starts_at, city, mode, category, description, register_url, source_url, status, created_at)
        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM events WHERE register_url = ? OR (title = ? AND starts_at = ?))`,
     )
-    .run(randomUUID(), input.title, input.date, input.city, input.mode, input.category, input.description,
+    .run(id, input.title, input.date, input.city, input.mode, input.category, input.description,
       input.registerUrl, input.sourceUrl, status, Date.now(), input.registerUrl, input.title, input.date)
+  if (result.changes && status === 'published') announce(getEvent(id))
   return result.changes > 0
+}
+
+// "Hackathons" in someone's interests matches a Hackathon; "Music" matches an event mentioning music.
+function interested(interest: string, event: any) {
+  const word = interest.toLowerCase().replace(/s$/, '')
+  if (word === event.category.toLowerCase()) return true
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`\\b${escaped}`, 'i').test(`${event.title} ${event.description}`)
+}
+
+// Tell people about a newly published event that matches their interests.
+// In-person events only go to people in that city (or who haven't set one).
+// shortcut: checks every user in memory, fine for thousands of people, move matching into SQL beyond that.
+function announce(event: any) {
+  const users = db.prepare('SELECT id, city, interests FROM users').all() as any[]
+  const nearby = (city: string) => event.mode !== 'In person' || !event.city || !city || city.toLowerCase() === event.city.toLowerCase()
+  const ids = users
+    .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => interested(i, event)))
+    .map((u) => u.id)
+  if (ids.length) notify(ids, 'update', `New ${event.category.toLowerCase()} you might like: ${event.title}`, '/events')
 }
 
 // Public feed: published and not over yet (dates are ISO text, so text comparison works).
@@ -45,14 +68,16 @@ const COLUMNS: Record<string, string> = {
 }
 
 export function updateEvent(id: string, patch: EventPatch) {
-  getEvent(id)
+  const before = getEvent(id)
   const fields = Object.entries(patch).filter(([key, value]) => value !== undefined && COLUMNS[key])
   if (fields.length) {
     // Column names come from the fixed COLUMNS list above, never from the request.
     const sets = fields.map(([key]) => `${COLUMNS[key]} = ?`).join(', ')
     db.prepare(`UPDATE events SET ${sets} WHERE id = ?`).run(...fields.map(([, v]) => v as string), id)
   }
-  return getEvent(id)
+  const after = getEvent(id)
+  if (after.status === 'published' && before.status !== 'published') announce(after)
+  return after
 }
 
 // "Find people to go with": the first person creates the event's group, everyone after joins it directly.

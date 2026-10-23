@@ -1,6 +1,9 @@
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { getGroup } from '../groups/groups.service.ts'
+import { notify } from '../notifications/notifications.service.ts'
+import { nameOf } from '../people/people.service.ts'
+import { isBlocked } from '../safety/safety.service.ts'
 import type { Decision } from './requests.schema.ts'
 
 function findGroup(groupId: string) {
@@ -35,11 +38,13 @@ export function requestToJoin(groupId: string, userId: string, intro: string) {
   if (status === 'declined') throw new HttpError(409, 'The host has declined this request')
   if (status) return status // already waiting or already in: nothing to do
   if (group.spots === 0) throw new HttpError(409, 'This group is full')
+  if (isBlocked(group.ownerId, userId)) throw new HttpError(403, 'You can’t join this group')
   db.prepare("INSERT INTO group_members (group_id, user_id, status, intro) VALUES (?, ?, 'pending', ?)").run(
     groupId,
     userId,
     intro,
   )
+  notify(group.ownerId, 'update', `${nameOf(userId)} asked to join ${group.name}`, `/groups/${groupId}?tab=Members`)
   return 'pending'
 }
 
@@ -59,5 +64,14 @@ export function decide(groupId: string, hostId: string, userId: string, decision
   if (decision === 'accept' && group.spots === 0) throw new HttpError(409, 'This group is full')
   const status = decision === 'accept' ? 'joined' : 'declined'
   db.prepare('UPDATE group_members SET status = ? WHERE group_id = ? AND user_id = ?').run(status, groupId, userId)
+  // Only good news is sent. Declined people learn it if they ask again (see requestToJoin).
+  if (status === 'joined') notify(userId, 'update', `You’re in! ${group.name} accepted your request`, `/groups/${groupId}`)
   return status
+}
+
+// Leaving a group, or taking back a request that's still waiting. Hosts can't leave their own group.
+export function leave(groupId: string, userId: string) {
+  const group = findGroup(groupId)
+  if (group.ownerId === userId) throw new HttpError(409, 'You host this group, so you can’t leave it')
+  db.prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status IN ('pending', 'joined')").run(groupId, userId)
 }

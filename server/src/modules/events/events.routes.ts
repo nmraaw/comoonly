@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { requireAdmin, requireAuth } from '../../middleware/auth.ts'
-import { eventPatchSchema, eventSchema } from './events.schema.ts'
+import { eventPatchSchema, eventSchema, postSchema } from './events.schema.ts'
 import { goWith, listDrafts, listPublished, saveEvent, updateEvent } from './events.service.ts'
-import { scanSources } from './events.finder.ts'
+import { eventsFromPost, scanSources } from './events.finder.ts'
 
 export const eventRoutes = Router()
 
@@ -24,6 +24,11 @@ eventRoutes.get('/review', requireAuth, requireAdmin, (_req, res) => {
 
 eventRoutes.post('/scan', requireAuth, requireAdmin, async (_req, res) => {
   res.json(await scanSources())
+})
+
+// Instagram/TikTok: the AI reads a pasted caption or poster screenshot; results wait in the review queue.
+eventRoutes.post('/from-post', requireAuth, requireAdmin, async (req, res) => {
+  res.json(await eventsFromPost(postSchema.parse(req.body)))
 })
 
 // An admin adding an event by hand publishes it straight away.

@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { requireMember } from '../groups/groups.service.ts'
-import { connectionStatus } from '../people/people.service.ts'
+import { notify, markRead } from '../notifications/notifications.service.ts'
+import { connectionStatus, nameOf } from '../people/people.service.ts'
 
 const LIMIT = 200 // newest 200 messages per conversation is plenty for small groups
 
@@ -18,16 +19,22 @@ function requireConnected(userId: string, otherId: string) {
   }
 }
 
+// Reading a chat counts as seeing it: its notification is marked read.
 export function groupMessages(groupId: string, userId: string) {
   requireMember(groupId, userId)
+  markRead(userId, `/groups/${groupId}?tab=Chat`)
   const rows = db
-    .prepare(`${SELECT} WHERE m.group_id = ? ORDER BY m.created_at DESC, m.rowid DESC LIMIT ${LIMIT}`)
-    .all(groupId)
+    .prepare(
+      `${SELECT} WHERE m.group_id = ? AND m.author_id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = ?)
+       ORDER BY m.created_at DESC, m.rowid DESC LIMIT ${LIMIT}`,
+    )
+    .all(groupId, userId)
   return oldestFirst(rows)
 }
 
 export function directMessages(userId: string, otherId: string) {
   requireConnected(userId, otherId)
+  markRead(userId, `/messages?chat=${otherId}`)
   const rows = db
     .prepare(
       `${SELECT} WHERE ((m.author_id = ? AND m.to_id = ?) OR (m.author_id = ? AND m.to_id = ?))
@@ -38,13 +45,25 @@ export function directMessages(userId: string, otherId: string) {
 }
 
 export function sendToGroup(groupId: string, userId: string, text: string) {
-  requireMember(groupId, userId)
-  return insert({ groupId, toId: null, userId, text })
+  const group = requireMember(groupId, userId)
+  const message = insert({ groupId, toId: null, userId, text })
+  // Everyone else in the group, except people who blocked the sender.
+  const others = db
+    .prepare(
+      `SELECT user_id FROM group_members WHERE group_id = ? AND status = 'joined' AND user_id != ?
+       AND user_id NOT IN (SELECT blocker_id FROM blocks WHERE blocked_id = ?)`,
+    )
+    .all(groupId, userId, userId)
+    .map((r: any) => r.user_id)
+  notify(others, 'message', `${nameOf(userId)} in ${group.name}: ${text}`, `/groups/${groupId}?tab=Chat`)
+  return message
 }
 
 export function sendDirect(userId: string, otherId: string, text: string) {
   requireConnected(userId, otherId)
-  return insert({ groupId: null, toId: otherId, userId, text })
+  const message = insert({ groupId: null, toId: otherId, userId, text })
+  notify(otherId, 'message', `${nameOf(userId)}: ${text}`, `/messages?chat=${userId}`)
+  return message
 }
 
 function insert(m: { groupId: string | null; toId: string | null; userId: string; text: string }) {

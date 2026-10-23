@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS activities (
   id         TEXT PRIMARY KEY,
   group_id   TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
-  starts_at  TEXT NOT NULL, -- local date-time as typed, e.g. 2026-10-25T16:00
+  starts_at  TEXT NOT NULL, -- local date-time as typed, e.g. 2026-10-25T16:00 (plan and notes columns: see connection.ts)
   place      TEXT NOT NULL,
   created_by TEXT NOT NULL REFERENCES users(id),
   created_at INTEGER NOT NULL
@@ -113,3 +113,33 @@ CREATE TABLE IF NOT EXISTS events (
   created_at   INTEGER NOT NULL,
   UNIQUE (source_url, title, starts_at)
 );
+
+-- One row per person blocked. Either direction stops connecting, private messages and joining their groups.
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+
+-- Reports go to the admin dashboard.
+CREATE TABLE IF NOT EXISTS reports (
+  id          TEXT PRIMARY KEY,
+  reporter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reported_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason      TEXT NOT NULL,
+  details     TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL, -- 'message' or 'update'; message ones light up the Messages tab
+  text       TEXT NOT NULL,
+  link       TEXT NOT NULL, -- where tapping it goes, e.g. /groups/abc?tab=Chat
+  read       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id, read, created_at);
