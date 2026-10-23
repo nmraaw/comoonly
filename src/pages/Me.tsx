@@ -5,7 +5,7 @@ import Profile from '../components/Profile'
 import { Empty, Modal } from '../components/UI'
 import { useApp } from '../state/AppContext'
 export default function Me() {
-  const { me, groups, membership, logout } = useApp()
+  const { groups, membership, logout } = useApp()
   const mine = groups.filter((g) => membership[g.id] === 'joined')
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
@@ -28,11 +28,6 @@ export default function Me() {
         </Link>
       </header>
       <Profile own />
-      {me!.isAdmin && (
-        <Link className="button primary" to="/admin">
-          Your dashboard →
-        </Link>
-      )}
       <h2 className="section-title">My circles</h2>
       <div className="stack">
         {mine.map((g) => (

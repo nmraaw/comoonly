@@ -50,7 +50,7 @@ memberships) lives in `src/state/MockProvider.tsx`; each screen loads its own da
 ## Event finder
 
 1. `server/src/modules/events/sources.json` lists the public pages to check. Edit it any time.
-2. An admin opens **Discover → Events → Review new events** and presses **Find new events**.
+2. An admin opens the admin interface at **/admin/ → Review events** and presses **Find new events**.
 3. Each page is read for schema.org event data (JSON-LD, which most event sites include for search
    engines). If a page has none and an AI provider is set in `.env`, the AI reads the page text instead.
 4. Every result is checked; anything malformed or already past is thrown away. New ones wait as drafts.

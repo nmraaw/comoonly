@@ -43,7 +43,11 @@ if (config.isProd) {
   const dist = fileURLToPath(new URL('../../dist', import.meta.url))
   app.use(express.static(dist))
   // Any other page address (e.g. /groups/abc) gets the app; React Router shows the right screen.
-  app.use((req, res, next) => (req.method === 'GET' ? res.sendFile('index.html', { root: dist }) : next()))
+  // /admin… gets the separate admin interface instead (src/admin), which has its own login.
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next()
+    res.sendFile(req.path.startsWith('/admin') ? 'admin/index.html' : 'index.html', { root: dist })
+  })
 }
 
 app.use(errorHandler) // must be last: catches every error thrown above

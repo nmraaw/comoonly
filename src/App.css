@@ -942,3 +942,22 @@ input[type='file']::file-selector-button {
   flex-direction: column;
   gap: 2px;
 }
+/* Admin interface (admin/index.html): a wider, desktop-friendly page */
+.admin-shell {
+  max-width: 760px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 20px 22px 48px;
+  background: var(--paper);
+}
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-brand strong {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}

@@ -1,10 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, useApi } from '../api'
-import DetailHeader from '../components/DetailHeader'
-import NotFound from '../components/NotFound'
 import { Empty } from '../components/UI'
-import { useApp } from '../state/AppContext'
 import type { EventItem } from '../types'
 type Report = { source: string; via?: string; found?: number; added?: number; error?: string }[]
 
@@ -66,13 +62,11 @@ const values = (form: HTMLFormElement) => {
 }
 
 // Admins only: run the finder, then approve, fix or reject what it found. Nothing goes live on its own.
-export default function EventsReview() {
-  const { me } = useApp()
-  const drafts = useApi<EventItem[]>(me!.isAdmin ? '/events/review' : null)
+export default function ReviewEvents() {
+  const drafts = useApi<EventItem[]>('/events/review')
   const [report, setReport] = useState<Report | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  if (!me!.isAdmin) return <NotFound />
   async function scan() {
     setBusy(true)
     setReport(null)
@@ -104,7 +98,6 @@ export default function EventsReview() {
   }
   return (
     <>
-      <DetailHeader title="Review events" fallback="/events" />
       <h1>
         New events,
         <br />
@@ -148,9 +141,9 @@ export default function EventsReview() {
           </div>
         </form>
       ))}
-      <Link className="button" to="/events/suggest">
+      <a className="button" href="/events/suggest" target="_blank" rel="noreferrer">
         Add from an Instagram or TikTok post →
-      </Link>
+      </a>
       <h2 className="section-title">Add an event yourself</h2>
       <form
         onSubmit={(ev) => {

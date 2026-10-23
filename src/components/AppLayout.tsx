@@ -27,7 +27,7 @@ export default function AppLayout() {
               isActive ||
               (label === 'Discover' && /^\/(posts|events|notifications)/.test(pathname)) ||
               (label === 'Groups' && pathname.startsWith('/activities/')) ||
-              (label === 'Me' && /^\/(users|admin)/.test(pathname))
+              (label === 'Me' && /^\/users/.test(pathname))
                 ? 'active'
                 : ''
             }

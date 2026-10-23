@@ -13,7 +13,7 @@ People's browsers never touch the file; they ask your server, and the server che
 Passwords are stored as one-way hashes, never as text. The full table-by-table explanation is in
 [DATABASE.md](DATABASE.md).
 
-**Backups:** Me → Your dashboard → **Download a backup** saves a complete copy of the database. Do it
+**Backups:** `/admin/` → Dashboard → **Download a backup** saves a complete copy of the database. Do it
 weekly and before big changes, and keep it somewhere private: it contains everyone's data.
 
 ## 2. Running it on your computer
@@ -36,13 +36,16 @@ Checks before you share changes: `npm test`, `npm run lint`, `npm run format`.
 
 ## 3. Your admin side (the "server side" of the app)
 
-You're an admin because your email is in `ADMIN_EMAILS`. Admin tools appear only for you; for everyone
-else the server refuses them even if they type the address.
+Your admin tools are a **separate interface** at **`/admin/`** on your site (for example
+`https://comoonly-production.up.railway.app/admin/`, or `http://localhost:5173/admin/` while developing).
+It has its own login and its own code: the public app doesn't contain or link to it. Only accounts whose
+email is in `ADMIN_EMAILS` get in, and the server refuses every admin request from anyone else.
+Bookmark it.
 
 | Where | What you can do |
 |---|---|
-| **Me → Your dashboard** | Totals (people, new this week, groups, live events, to review, open reports). **People**: everyone who signed up, with email and join date, and **Delete** for data-deletion requests. **Events**: all events and how many are going. **Reports**: what people reported; **Mark as handled**. **Download a backup**. |
-| **Discover → Events → Review new events** | **Find new events** runs the event finder now. Fix, **Publish** or **Reject** each draft (found by the finder, suggested by people, or read from Instagram). **Add an event yourself**. |
+| **/admin/ → Dashboard** | Totals (people, new this week, groups, live events, to review, open reports). **People**: everyone who signed up, with email and join date, and **Delete** for data-deletion requests. **Events**: all events and how many are going. **Reports**: what people reported; **Mark as handled**. **Download a backup**. |
+| **/admin/ → Review events** | **Find new events** runs the event finder now. Fix, **Publish** or **Reject** each draft (found by the finder, suggested by people, or read from Instagram). **Add an event yourself**. |
 | **Events → Suggest an event** | Paste an Instagram/TikTok link plus the caption or a poster screenshot; Gemini fills it in and it waits in your review queue. |
 
 Things the server does on its own (online only): every 12 hours it looks for new events and deletes

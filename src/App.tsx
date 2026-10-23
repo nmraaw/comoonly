@@ -13,9 +13,7 @@ import Me from './pages/Me'
 import Welcome from './pages/Welcome'
 import ProfileSetup from './pages/ProfileSetup'
 import Events from './pages/Events'
-import EventsReview from './pages/EventsReview'
 import Notifications from './pages/Notifications'
-import Admin from './pages/Admin'
 import SuggestEvent from './pages/SuggestEvent'
 import Privacy from './pages/Privacy'
 import AppProvider from './state/AppProvider'
@@ -48,10 +46,8 @@ function Gate() {
         <Route path="activities/:id" element={<ActivityDetail />} />
         <Route path="users/:id" element={<UserDetail />} />
         <Route path="events" element={<Events />} />
-        <Route path="events/review" element={<EventsReview />} />
         <Route path="events/suggest" element={<SuggestEvent />} />
         <Route path="notifications" element={<Notifications />} />
-        <Route path="admin" element={<Admin />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

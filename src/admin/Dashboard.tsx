@@ -1,9 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, useApi } from '../api'
-import { useApp } from '../state/AppContext'
-import DetailHeader from '../components/DetailHeader'
-import NotFound from '../components/NotFound'
+import type { Me } from '../types'
 import { Chips, Empty } from '../components/UI'
 type Overview = {
   totals: {
@@ -39,12 +36,10 @@ const day = (time: number | string) =>
   new Date(time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 // Your dashboard: who signed up, which events exist, and what people reported. Only admins can open it;
 // the server checks too, so nobody else can load this data even by typing the address.
-export default function Admin() {
-  const { me } = useApp()
-  const { data, error, reload } = useApi<Overview>(me!.isAdmin ? '/admin/overview' : null)
+export default function Dashboard({ me, onReview }: { me: Me; onReview: () => void }) {
+  const { data, error, reload } = useApi<Overview>('/admin/overview')
   const [tab, setTab] = useState('People')
   const [search, setSearch] = useState('')
-  if (!me!.isAdmin) return <NotFound />
   async function resolve(id: string) {
     try {
       await api('/admin/reports/' + id + '/resolve', { method: 'POST' })
@@ -67,7 +62,6 @@ export default function Admin() {
   const q = search.toLowerCase()
   return (
     <>
-      <DetailHeader title="Dashboard" fallback="/me" />
       <h1>
         How Comoonly
         <br />
@@ -92,9 +86,9 @@ export default function Admin() {
         </div>
       )}
       {t && t.drafts > 0 && (
-        <Link className="button" to="/events/review">
+        <button className="button" onClick={onReview}>
           Review {t.drafts} new events →
-        </Link>
+        </button>
       )}
       {/* A full copy of the database: keep it somewhere private, it holds everyone's data. */}
       <a className="button" href="/api/admin/backup" download>
@@ -117,15 +111,15 @@ export default function Admin() {
             .filter((p) => (p.name + ' ' + p.email + ' ' + p.city).toLowerCase().includes(q))
             .map((p) => (
               <div className="member-row" key={p.id}>
-                <Link to={'/users/' + p.id}>
+                <a href={'/users/' + p.id} target="_blank" rel="noreferrer">
                   <strong>{p.name}</strong>
                   <small>
                     {p.email}
                     {p.city ? ' · ' + p.city : ''} · joined {day(p.joinedAt)} · {p.groups}{' '}
                     {p.groups === 1 ? 'group' : 'groups'}
                   </small>
-                </Link>
-                {p.id !== me!.id && (
+                </a>
+                {p.id !== me.id && (
                   <button className="text-button" onClick={() => deletePerson(p.id, p.name)}>
                     Delete
                   </button>
@@ -153,9 +147,9 @@ export default function Admin() {
               <article className={'notice ' + (r.status === 'open' ? 'pink' : '')} key={r.id}>
                 <strong>{r.reason}</strong>
                 <p>
-                  <Link className="text-button" to={'/users/' + r.reportedId}>
+                  <a className="text-button" href={'/users/' + r.reportedId} target="_blank" rel="noreferrer">
                     {r.reportedName}
-                  </Link>
+                  </a>
                   , reported by {r.reporterName} · {day(r.createdAt)}
                 </p>
                 {r.details && <p>{r.details}</p>}

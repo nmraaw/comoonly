@@ -7,7 +7,7 @@ import DetailHeader from '../components/DetailHeader'
 import { Empty, Mascot } from '../components/UI'
 // Upcoming events (approved by an admin). Each links to its official page and has a group to go together.
 export default function Events() {
-  const { me, refresh } = useApp()
+  const { refresh } = useApp()
   const navigate = useNavigate()
   const { data, error } = useApi<EventItem[]>('/events')
   const [busy, setBusy] = useState('')
@@ -33,11 +33,6 @@ export default function Events() {
       <Link className="button lime" to="/events/suggest">
         ＋ Suggest an event
       </Link>
-      {me!.isAdmin && (
-        <Link className="button" to="/events/review">
-          Review new events →
-        </Link>
-      )}
       {error && <Empty>{error}</Empty>}
       {data && !data.length && <Empty>No upcoming events yet. Check back soon.</Empty>}
       {data?.map((e) => (
