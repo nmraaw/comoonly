@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import './helpers.ts' // fresh in-memory database
 import { config } from '../src/config.ts'
-import { looksLikeEvent, scanInstagram } from '../src/modules/events/events.instagram.ts'
+import { limits, looksLikeEvent, scanInstagram } from '../src/modules/events/events.instagram.ts'
+import { saveEvent } from '../src/modules/events/events.service.ts'
 
 const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
 const soon = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
@@ -75,6 +76,7 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
   }).listen(0)
   const port = (fake.address() as { port: number }).port
   Object.assign(config.instagram, { apiUrl: `http://localhost:${port}`, token: 't', userId: 'me123' })
+  limits.aiPauseMs = 0 // no need to be gentle with the stand-in AI
   config.ai.baseUrl = `http://localhost:${port}`
   try {
     const lists = { hashtags: ['lahoreevents'], accounts: ['someorganizer'] }
@@ -86,6 +88,33 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
     assert.equal(aiCalls, 2)
     await scanInstagram(lists)
     assert.equal(aiCalls, 2) // second run: every post was already seen, nothing sent to the AI again
+
+    // Daily limit: with 10 Instagram drafts already today, new posts aren't even sent to the AI.
+    const filler = {
+      date: `${soon(30)}T10:00`,
+      deadline: '',
+      city: 'Multan',
+      mode: 'In person' as const,
+      category: 'Event',
+      description: '',
+    }
+    for (let i = 0; i < 8; i++)
+      saveEvent({
+        ...filler,
+        title: `Filler ${i} ${'abcdefgh'[i]}x`,
+        registerUrl: `https://instagram.test/p/f${i}`,
+        sourceUrl: `https://instagram.test/p/f${i}`,
+      })
+    posts.push({
+      id: 'p5',
+      caption: 'Hackathon this weekend, register now',
+      media_type: 'IMAGE',
+      permalink: 'https://instagram.test/p/5',
+      timestamp: ago(1),
+    })
+    const capped = await scanInstagram(lists)
+    assert.match(capped[0].error ?? '', /daily limit of 10/)
+    assert.equal(aiCalls, 2) // unchanged: p5 waits for a later run
 
     config.instagram.token = ''
     assert.deepEqual(await scanInstagram(lists), []) // not set up → quietly does nothing

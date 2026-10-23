@@ -120,5 +120,33 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.deepEqual([edited.title, edited.city, edited.category], ['Karachi Code Jam 2', 'Karachi', 'Hackathon'])
 
   assert.deepEqual(await get('/events/review', sara), []) // nothing waiting
+
+  // The same concert posted by two accounts with different titles is saved once.
+  const { saveEvent } = await import('../src/modules/events/events.service.ts')
+  const concert = {
+    date: '2030-03-03T18:00',
+    deadline: '',
+    city: 'Lahore',
+    mode: 'In person' as const,
+    category: 'Event',
+    description: '',
+    sourceUrl: 'https://instagram.test',
+  }
+  assert.equal(
+    saveEvent({ ...concert, title: 'Prem Nagar Charity Concert', registerUrl: 'https://instagram.test/p/a' }),
+    true,
+  )
+  assert.equal(
+    saveEvent({
+      ...concert,
+      title: 'Prem Nagar - Live Concert featuring Shafqat',
+      registerUrl: 'https://instagram.test/p/b',
+    }),
+    false,
+  )
+  assert.equal(
+    saveEvent({ ...concert, title: 'Clay Mirror Workshop', registerUrl: 'https://instagram.test/p/c' }),
+    true,
+  )
   assert.equal(await status('/events/review', { headers: { cookie: hira } }), 403)
 })

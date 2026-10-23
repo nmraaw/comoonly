@@ -39,12 +39,17 @@ async function graph(path: string, params: Record<string, string>) {
 async function hashtagPosts(tag: string): Promise<Post[]> {
   const found = await graph('ig_hashtag_search', { user_id: config.instagram.userId, q: tag })
   if (!found.data?.[0]) return []
-  const recent = await graph(`${found.data[0].id}/recent_media`, {
-    user_id: config.instagram.userId,
-    fields: FIELDS,
-    limit: '50',
-  })
-  return recent.data ?? []
+  // Instagram refuses big pages ("reduce the amount of data"), so ask for 25 at a time, up to 2 pages.
+  const posts: Post[] = []
+  let after = ''
+  for (let page = 0; page < 2; page++) {
+    const params = { user_id: config.instagram.userId, fields: FIELDS, limit: '25', ...(after && { after }) }
+    const recent = await graph(`${found.data[0].id}/recent_media`, params)
+    posts.push(...(recent.data ?? []))
+    after = recent.paging?.cursors?.after
+    if (!recent.paging?.next || !after) break
+  }
+  return posts
 }
 
 async function accountPosts(username: string): Promise<Post[]> {
@@ -67,16 +72,37 @@ const seen = (id: string) => Boolean(db.prepare('SELECT 1 FROM seen_posts WHERE 
 const markSeen = (id: string) =>
   db.prepare('INSERT OR IGNORE INTO seen_posts (post_id, seen_at) VALUES (?, ?)').run(id, Date.now())
 
+// At most 10 new Instagram drafts a day (you review each one), and a pause between AI calls so Gemini's
+// free tier doesn't answer "429: too many requests". Exported so tests can shorten the pause.
+export const limits = { draftsPerDay: 10, aiPauseMs: 4000 }
+const draftsToday = () =>
+  (
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM events WHERE suggested_by IS NULL AND source_url LIKE '%instagram%' AND created_at > ?",
+      )
+      .get(Date.now() - 86_400_000) as { n: number }
+  ).n
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 // One run: for every hashtag and account, read new posts and turn the ones about events into drafts.
 export async function scanInstagram(lists?: InstagramLists) {
   if (!config.instagram.token || !config.instagram.userId || !config.ai.baseUrl) return [] // not set up yet
-  const { hashtags, accounts }: InstagramLists =
-    lists ?? JSON.parse(readFileSync(new URL('./instagram.json', import.meta.url), 'utf8'))
+  let chosen: InstagramLists
+  try {
+    chosen = lists ?? JSON.parse(readFileSync(new URL('./instagram.json', import.meta.url), 'utf8'))
+  } catch (err) {
+    // A typo in the list (e.g. a missing comma) shouldn't break the whole event finder.
+    return [{ source: 'Instagram', error: `instagram.json has a mistake: ${(err as Error).message}` }]
+  }
+  const { hashtags, accounts } = chosen
   const sources = [
-    ...hashtags.map((tag) => ({ name: `Instagram #${tag}`, load: () => hashtagPosts(tag) })),
+    // Instagram allows 30 different hashtags per account per 7 days, so only the first 30 in the list are used.
+    ...hashtags.slice(0, 30).map((tag) => ({ name: `Instagram #${tag}`, load: () => hashtagPosts(tag) })),
     ...accounts.map((user) => ({ name: `Instagram @${user}`, load: () => accountPosts(user) })),
   ]
   const report = []
+  let aiCalls = 0
   for (const source of sources) {
     try {
       let found = 0
@@ -84,6 +110,17 @@ export async function scanInstagram(lists?: InstagramLists) {
       for (const post of await source.load()) {
         if (Date.now() - Date.parse(post.timestamp) > WEEK || seen(post.id)) continue // too old, or done before
         if (looksLikeEvent(post.caption)) {
+          // Today's 10 are in: stop. Unchecked posts stay unseen and are looked at on a later run.
+          if (draftsToday() >= limits.draftsPerDay) {
+            report.push({
+              source: source.name,
+              found,
+              added,
+              error: `daily limit of ${limits.draftsPerDay} new events reached`,
+            })
+            return report
+          }
+          if (aiCalls++) await pause(limits.aiPauseMs)
           const image = post.media_type === 'VIDEO' ? undefined : await asDataUrl(post.media_url)
           const result = await eventsFromPost({ postUrl: post.permalink, text: post.caption ?? '', image })
           found += result.found

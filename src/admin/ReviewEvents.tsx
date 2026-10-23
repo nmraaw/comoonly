@@ -111,7 +111,7 @@ export default function ReviewEvents() {
           {report.map((r) => (
             <p key={r.source}>
               <strong>{r.source}</strong>:{' '}
-              {r.error ? 'couldn’t read it (' + r.error + ')' : `${r.found} found via ${r.via}, ${r.added} new`}
+              {r.error ? `stopped: ${r.error}` : `${r.found} found via ${r.via}, ${r.added} new`}
             </p>
           ))}
         </div>

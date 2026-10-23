@@ -18,11 +18,37 @@ const STILL_ON = "e.starts_at >= ? AND (e.deadline = '' OR e.deadline >= ?)"
 
 // Returns false for a duplicate, so nothing is saved twice. The same event is often listed on several
 // pages (e.g. an online talk on both the Lahore and Karachi pages), so its own link counts too.
+// Words too common to tell two events apart.
+const COMMON = new Set(
+  'live concert event events night show music festival workshop meetup summit with featuring and the for lahore karachi islamabad pakistan'.split(
+    ' ',
+  ),
+)
+const words = (title: string) =>
+  new Set(
+    title
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]{3,}/gu)
+      ?.filter((w) => !COMMON.has(w) && !/^\d+$/.test(w)),
+  )
+
+// The same event is often posted by several accounts with different titles ("Prem Nagar Charity Concert",
+// "Prem Nagar - Live Concert featuring..."). Same day + same city + 2 shared distinctive title words = same event.
+function looksLikeDuplicate(input: EventInput) {
+  const mine = words(input.title)
+  const sameDay = db
+    .prepare('SELECT title FROM events WHERE substr(starts_at, 1, 10) = ? AND lower(city) = lower(?)')
+    .all(input.date.slice(0, 10), input.city) as { title: string }[]
+  return sameDay.some(({ title }) => [...words(title)].filter((w) => mine.has(w)).length >= 2)
+}
+
 export function saveEvent(
   input: EventInput,
   status: 'draft' | 'published' = 'draft',
   suggestedBy: string | null = null,
 ) {
+  // Found and suggested events only; an admin adding one by hand knows what they're doing.
+  if (status === 'draft' && looksLikeDuplicate(input)) return false
   const id = randomUUID()
   const result = db
     .prepare(
