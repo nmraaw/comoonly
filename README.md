@@ -95,6 +95,6 @@ It is tested against a stand-in for Meta's API, not the real one yet: expect sma
 
 ## Put it online
 
-Step-by-step for GitHub and hosting (Railway, with a permanent disk for the database), how to use
+Step-by-step for GitHub and free hosting from your Mac (Tailscale Funnel), how to use
 your admin tools, and where users' data is stored: **[docs/RUNNING.md](docs/RUNNING.md)**.
 The data model and its design decisions: **[docs/DATABASE.md](docs/DATABASE.md)**.

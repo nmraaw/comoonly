@@ -5,9 +5,9 @@
 Everything (accounts, profiles, groups, chats, events, notifications) is in **one SQLite database
 file** that your Node.js server reads and writes:
 
-- **On your computer:** `server/data/comoonly.db`
-- **Online (Railway):** `/data/comoonly.db` on a **volume**, Railway's name for a permanent disk that
-  survives restarts and new deploys.
+- **On your Mac:** `server/data/comoonly.db`. This is also where the live site's data lives while
+  your Mac hosts it (section 5). It's never uploaded to GitHub.
+- **If you later move to a paid host:** a file on that host's permanent disk, set with `DB_PATH`.
 
 People's browsers never touch the file; they ask your server, and the server checks permissions first.
 Passwords are stored as one-way hashes, never as text. The full table-by-table explanation is in
@@ -53,18 +53,18 @@ drafts whose date or registration deadline has passed.
 
 ### Settings
 
-On your computer they're in `.env` (never uploaded to GitHub); online they're Railway **Variables**.
+They're in `.env` on your Mac (never uploaded to GitHub). Restart `npm run live` after changing them.
 
 | Setting | What it's for |
 |---|---|
 | `ADMIN_EMAILS` | Your email(s), comma-separated. Whoever signs up with one is an admin. |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | Gemini, for reading event posts (see `.env.example`). |
 | `INSTAGRAM_TOKEN`, `INSTAGRAM_USER_ID` | After Meta approves your app (see the README). |
-| `DB_PATH` | Where the database file lives. Online: `/data/comoonly.db`. |
+| `DB_PATH` | Where the database file lives. Leave it out on your Mac; only needed on a paid host. |
 
 ## 4. Putting the code on GitHub
 
-GitHub keeps your code safe online, and Railway deploys from it. Your project already has Git history
+GitHub keeps your code safe online (and judges can read it there). Your project already has Git history
 (every change I made is a saved "commit"); this uploads it.
 
 1. Create a free account at **github.com**.
@@ -77,31 +77,62 @@ Never uploaded, on purpose: `.env` (your keys), `server/data` (users' data), `no
 For the hackathon, judges need access: either untick "private" (Repository → Repository settings), or
 invite them on github.com → your repo → Settings → Collaborators.
 
-## 5. Putting the app online (Railway)
+## 5. Putting the app online for free, from your Mac
 
-Railway's Hobby plan is about $5/month and includes $5 of usage, which a small app like this fits in
-(check railway.com/pricing). It gives your app a permanent disk and an https address.
+Your Mac runs the app and stores the data (`server/data/comoonly.db`). A free **tunnel** gives it a
+public `https://` address, so people can reach it without you opening anything on your router.
 
-1. Go to **railway.com** → **Login with GitHub**. Choose the Hobby plan.
-2. **New Project → Deploy from GitHub repo** → pick `comoonly` (allow Railway to see it if asked).
-3. Open the service → **Settings**:
-   - **Build command:** `npm ci --include=dev && npm run build`
-   - **Start command:** `npm start`
-   - **Healthcheck path:** `/api/health`
-4. **Add a volume:** on the project canvas, right-click the service → **Attach volume** → mount path
-   `/data`. This is where the database lives.
-5. **Variables** tab → add:
-   - `DB_PATH` = `/data/comoonly.db`
-   - `ADMIN_EMAILS` = your email
-   - `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`: copy from your `.env`
-6. **Settings → Networking → Generate Domain**. You get an address like
-   `https://comoonly-production.up.railway.app`.
-7. **Straight away, open that address and sign up with your `ADMIN_EMAILS` email.** Emails aren't
-   verified, so be the first to register it before you share the link.
-8. Share the link. Every time you **Push origin** in GitHub Desktop, Railway rebuilds and redeploys by
-   itself. Database changes (new files in `server/src/db/migrations`) apply automatically on start.
+**Good to know:** the site is online only while your Mac is on, awake and connected. Keep it plugged
+in with the lid open. `npm run live` stops the Mac from sleeping while it runs. When you outgrow this,
+a paid host (e.g. Railway, about $5/month) can take over: copy the database file across and set `DB_PATH`.
 
-Logs: Railway → your service → **Deployments** → the latest one → **View logs**.
+### Step 1: start the app in live mode
 
-The screens on Railway change from time to time; if a button has moved, the same words are usually
-in its search box (top of the dashboard).
+Stop the development servers first (`npm run server` / `npm run dev` use the same port), then:
+
+```bash
+npm run live
+```
+
+This builds the website, starts the server on port 3001 and keeps the Mac awake. Leave that
+Terminal window open. Check `http://localhost:3001` works.
+
+### Step 2: give it a public address with Tailscale Funnel (free, address never changes)
+
+1. Download Tailscale from **tailscale.com/download/macos**. Use the **standalone** download, not the
+   App Store version. Install it, open it, and sign in (Google is fine). The free Personal plan is enough.
+2. In a **second** Terminal window:
+
+   ```bash
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale funnel --bg 3001
+   ```
+
+   The first time, it prints a link to switch on Funnel (and HTTPS) for your account. Open it, allow
+   it, and run the command again.
+3. It prints your public address, like `https://your-mac.tail1234.ts.net`. That's your site, and it
+   stays the same every time, so it's safe to share, bookmark and give to Meta for app review.
+   Your admin interface is that address + `/admin/`.
+4. To take the site offline: `/Applications/Tailscale.app/Contents/MacOS/Tailscale funnel reset`.
+
+`--bg` keeps sharing after you close the window. After a restart, run `npm run live` again;
+Tailscale usually resumes the funnel by itself (if not, repeat step 2.2).
+
+### Quick alternative for a one-off demo: Cloudflare quick tunnel (no account)
+
+Download `cloudflared-darwin-amd64.tgz` from github.com/cloudflare/cloudflared/releases, unpack it, then:
+
+```bash
+./cloudflared tunnel --url http://localhost:3001
+```
+
+It prints a `https://….trycloudflare.com` address. It's free and instant, but **the address changes
+every time** and it's meant for testing, so use Tailscale for anything people should bookmark.
+
+### Before you share the link
+
+1. Open your public address and **sign up with both admin emails** (`ADMIN_EMAILS` in `.env`) before
+   anyone else can register them; emails aren't verified.
+2. Back up regularly: `/admin/` → Dashboard → **Download a backup**. Your Mac's Time Machine also
+   covers `server/data/`. A copy made before going live is at `server/data/backup-before-going-live.db`.
+3. The two "(test account)" users are for trying things out; delete them in `/admin/` → People once
+   real people join. Their logins are in your private `.env`.
