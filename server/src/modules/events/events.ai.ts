@@ -78,6 +78,61 @@ export function cleanEvents(candidates: Candidate[], source: Source): EventInput
 
 // A post (Instagram, TikTok, a WhatsApp poster...): caption and/or image → events saved as drafts for review.
 // Used by "Suggest an event", and later by the Instagram reader.
+// Pakistan's main cities, for when the AI names the city but leaves the country blank.
+const PAKISTAN_CITIES = new Set([
+  'karachi',
+  'lahore',
+  'islamabad',
+  'rawalpindi',
+  'faisalabad',
+  'multan',
+  'peshawar',
+  'quetta',
+  'sialkot',
+  'gujranwala',
+  'hyderabad',
+  'abbottabad',
+  'bahawalpur',
+  'sargodha',
+  'sukkur',
+  'larkana',
+  'sheikhupura',
+  'gujrat',
+  'mardan',
+  'kasur',
+  'rahim yar khan',
+  'sahiwal',
+  'okara',
+  'wah cantt',
+  'dera ghazi khan',
+  'mirpur khas',
+  'nawabshah',
+  'mingora',
+  'swat',
+  'chiniot',
+  'jhang',
+  'jhelum',
+  'muzaffarabad',
+  'gilgit',
+  'skardu',
+  'hunza',
+  'murree',
+  'gwadar',
+  'taxila',
+  'mirpur',
+  'chitral',
+])
+
+// Kept if the country is Pakistan, or the city is a Pakistani city.
+function inPakistan(c: Candidate) {
+  if (/^(pakistan|pk)$/i.test(String(c.country ?? '').trim())) return true
+  return PAKISTAN_CITIES.has(
+    String(c.city ?? '')
+      .toLowerCase()
+      .trim(),
+  )
+}
+
 // `pakistanOnly` (used by the Instagram reader): drop events the AI places outside Pakistan, or can't place.
 // Instagram doesn't share a post's location through the API, so the AI judges it from venue, city, prices etc.
 export async function eventsFromPost(
@@ -92,7 +147,7 @@ export async function eventsFromPost(
   ]
   // A poster often has no link; then the post itself is where people find out more.
   const candidates = (await askAi(content))
-    .filter((c) => !pakistanOnly || /^(pakistan|pk)$/i.test(String(c.country ?? '').trim()))
+    .filter((c) => !pakistanOnly || inPakistan(c))
     .map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
   const events = cleanEvents(candidates, { name: 'post', url: post.postUrl })
   return { found: events.length, added: events.filter((e) => saveEvent(e, 'draft', suggestedBy)).length }

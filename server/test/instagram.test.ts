@@ -78,6 +78,12 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
               content: JSON.stringify([
                 event,
                 { ...event, title: `Abroad ${aiCalls}`, city: 'Mumbai', country: 'India' },
+                {
+                  ...event,
+                  title: `No country given ${aiCalls}`,
+                  country: '',
+                  registerUrl: `https://tix.test/${aiCalls}`,
+                }, // city Lahore is enough
               ]),
             },
           },
@@ -94,8 +100,9 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
     const lists = { hashtags: ['lahoreevents'], accounts: ['someorganizer'] }
     const first = await scanInstagram(lists)
     assert.deepEqual(first, [
-      { source: 'Instagram #lahoreevents', via: 'Instagram API', found: 1, added: 1 }, // p1 only: p2 isn't an event, p3 is old; the Mumbai event is dropped (Pakistan only)
-      { source: 'Instagram @someorganizer', via: 'Instagram API', found: 1, added: 1 },
+      // p1 only (p2 isn't an event, p3 is old): its Lahore events are kept, the Mumbai one is dropped
+      { source: 'Instagram #lahoreevents', via: 'Instagram API', found: 2, added: 2 },
+      { source: 'Instagram @someorganizer', via: 'Instagram API', found: 2, added: 2 },
     ])
     assert.equal(aiCalls, 2)
     await scanInstagram(lists)
