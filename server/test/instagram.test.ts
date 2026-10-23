@@ -80,7 +80,7 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
                 { ...event, title: `Abroad ${aiCalls}`, city: 'Mumbai', country: 'India' },
                 {
                   ...event,
-                  title: `No country given ${aiCalls}`,
+                  title: `Lahore meetup ${['alpha', 'beta'][aiCalls - 1]}`,
                   country: '',
                   registerUrl: `https://tix.test/${aiCalls}`,
                 }, // city Lahore is enough
