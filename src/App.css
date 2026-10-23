@@ -875,6 +875,9 @@ input[type='file']::file-selector-button {
   width: 120px;
   flex: none;
 }
+.info-rows {
+  background: #fff;
+}
 .info-rows p {
   display: flex;
   align-items: center;

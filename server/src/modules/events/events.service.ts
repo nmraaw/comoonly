@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { createGroup } from '../groups/groups.service.ts'
+import { createGroup, getGroup, isMember } from '../groups/groups.service.ts'
 import { INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
@@ -138,13 +138,16 @@ export function goWith(eventId: string, userId: string) {
         description: `Find people to go with to ${event.title}. Plan together, then go together.`.slice(0, 400),
         category: event.category,
         mode: event.mode,
-        location: event.mode === 'Online' ? 'Online' : event.city || 'Online',
+        location: event.mode === 'Online' ? 'Online' : event.city || 'Pakistan',
         spots: 49,
       } as any) // event categories (e.g. "Hackathon") are wider than the group form's choices
       db.prepare('UPDATE events SET group_id = ? WHERE id = ?').run(group.id, eventId)
       return group.id
     }
     // Event groups are open: no host approval. If you'd been declined or were pending, you're in now.
+    if (!isMember(event.groupId, userId) && getGroup(event.groupId)?.spots === 0) {
+      throw new HttpError(409, 'This event group is full')
+    }
     db.prepare(
       `INSERT INTO group_members (group_id, user_id, status) VALUES (?, ?, 'joined')
        ON CONFLICT (group_id, user_id) DO UPDATE SET status = 'joined'`,

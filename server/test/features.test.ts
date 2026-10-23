@@ -113,6 +113,12 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.equal((await get('/events', hira))[0].goingCount, 2)
   assert.equal(await status(`/groups/${first.groupId}/messages`, { headers: { cookie: zain } }), 200) // Zain is in
 
+  // A one-field edit must only change that field (regression: defaults used to wipe city and category).
+  const edited = await (
+    await fetch(`${base}/events/${listed.id}`, json({ title: 'Karachi Code Jam 2' }, sara, 'PATCH'))
+  ).json()
+  assert.deepEqual([edited.title, edited.city, edited.category], ['Karachi Code Jam 2', 'Karachi', 'Hackathon'])
+
   assert.deepEqual(await get('/events/review', sara), []) // nothing waiting
   assert.equal(await status('/events/review', { headers: { cookie: hira } }), 403)
 })

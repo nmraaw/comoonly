@@ -2,30 +2,41 @@ import { z } from 'zod'
 
 const httpUrl = z.url({ protocol: /^https?$/, message: 'Use a full https:// link' })
 
-// One event, whether found by the finder or typed in by an admin. Anything that doesn't fit is thrown away.
-export const eventSchema = z.object({
+// The fields of an event, without defaults (see eventPatchSchema for why).
+const fields = {
   title: z.string().trim().min(1, 'Add a title').max(200),
   date: z
     .string()
     .trim()
     .refine((d) => !Number.isNaN(Date.parse(d)), 'Add a valid date'),
-  city: z.string().trim().max(80).default(''),
-  mode: z.enum(['In person', 'Online', 'Hybrid']).default('In person'),
-  category: z.string().trim().min(1).max(40).default('Event'),
-  description: z.string().trim().max(1000).default(''),
+  city: z.string().trim().max(80),
+  mode: z.enum(['In person', 'Online', 'Hybrid']),
+  category: z.string().trim().min(1).max(40),
+  description: z.string().trim().max(1000),
   registerUrl: httpUrl, // the official registration page
   deadline: z // last day to register, if the post says
     .string()
     .trim()
-    .refine((d) => !d || !Number.isNaN(Date.parse(d)), 'Add a valid deadline')
-    .default(''),
+    .refine((d) => !d || !Number.isNaN(Date.parse(d)), 'Add a valid deadline'),
   sourceUrl: httpUrl, // where we found it
+}
+
+// One event, whether found by the finder or typed in by an admin. Anything that doesn't fit is thrown away.
+export const eventSchema = z.object({
+  ...fields,
+  city: fields.city.default(''),
+  mode: fields.mode.default('In person'),
+  category: fields.category.default('Event'),
+  description: fields.description.default(''),
+  deadline: fields.deadline.default(''),
 })
 
-// Admin edits in the review queue: change any field, then publish or reject.
-export const eventPatchSchema = eventSchema.partial().extend({
-  status: z.enum(['draft', 'published', 'rejected']).optional(),
-})
+// Admin edits: change any field, then publish or reject. Built from `fields`, not eventSchema, on purpose:
+// Zod fills in defaults even for left-out fields, so a "just publish it" edit would wipe city, category etc.
+export const eventPatchSchema = z
+  .object(fields)
+  .partial()
+  .extend({ status: z.enum(['draft', 'published', 'rejected']).optional() })
 
 // "Suggest an event": the post's link, plus its caption and/or a screenshot of the poster.
 export const suggestSchema = z

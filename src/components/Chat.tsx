@@ -48,7 +48,7 @@ export default function Chat({ path }: { path: string }) {
           <div key={message.id} className={'bubble ' + (message.authorId === me!.id ? 'outgoing' : '')}>
             <strong>
               {message.authorId === me!.id ? 'You' : message.author} ·{' '}
-              {new Date(message.createdAt).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}
+              {new Date(message.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </strong>
             <p>{message.text}</p>
           </div>

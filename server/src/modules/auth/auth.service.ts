@@ -74,6 +74,8 @@ export function login({ email, password }: LoginInput) {
   if (!row || !passwordMatches(password, row.password_hash)) {
     const current = tries && tries.until > now ? tries : { count: 0, until: now + 15 * 60_000 }
     failures.set(email, { ...current, count: current.count + 1 })
+    // Forget finished lockouts, so someone trying thousands of made-up emails can't fill the server's memory.
+    if (failures.size > 10_000) for (const [key, value] of failures) if (value.until < now) failures.delete(key)
     throw new HttpError(401, 'Wrong email or password')
   }
   failures.delete(email)
@@ -83,6 +85,7 @@ export function login({ email, password }: LoginInput) {
 export function createSession(userId: string) {
   const token = randomBytes(32).toString('hex')
   const expires = Date.now() + config.sessionDays * 86_400_000
+  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now()) // tidy up old logins as we go
   db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expires)
   return token
 }

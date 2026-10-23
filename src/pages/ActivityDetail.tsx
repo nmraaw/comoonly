@@ -56,7 +56,7 @@ export default function ActivityDetail() {
       <div className="notice info-rows">
         <p>
           <Icon name="clock" />
-          {new Date(event.date).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })} · Pakistan time
+          {new Date(event.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · Pakistan time
         </p>
         <p>
           <Icon name="pin" />
