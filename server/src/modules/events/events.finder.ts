@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { config } from '../../config.ts'
 import { askAi, cleanEvents, type Candidate, type Source } from './events.ai.ts'
+import { scanInstagram } from './events.instagram.ts'
 import { saveEvent } from './events.service.ts'
 
 // Many event sites embed machine-readable event data (schema.org JSON-LD) for search engines. Read that first.
@@ -88,5 +89,5 @@ export async function scanSources() {
       report.push({ source: source.name, error: (err as Error).message })
     }
   }
-  return report
+  return [...report, ...(await scanInstagram())] // Instagram adds nothing until it's set up
 }

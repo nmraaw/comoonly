@@ -9,12 +9,19 @@ export const config = {
   sessionDays: 14,
   // People with these emails can review events found by the event finder, e.g. ADMIN_EMAILS=you@mail.com
   adminEmails: list(process.env.ADMIN_EMAILS),
-  // Optional AI fallback for pages without structured event data. Any OpenAI-compatible endpoint works,
-  // including free ones: Groq (https://api.groq.com/openai/v1), OpenRouter free models, or Ollama on your laptop
-  // (http://localhost:11434/v1, no key). Leave AI_BASE_URL empty to use structured data only.
+  // The AI that reads event posts and pages without structured data. Any OpenAI-compatible endpoint works:
+  // Google Gemini's free tier is the default in .env.example; Groq or Ollama also work. Empty = AI off.
   ai: {
     baseUrl: process.env.AI_BASE_URL ?? '',
     apiKey: process.env.AI_API_KEY ?? '',
     model: process.env.AI_MODEL ?? '',
+  },
+  // Instagram's official API (Hashtag Search + Business Discovery). Empty = the Instagram reader is off.
+  // You get both values after Meta approves your app; see README "Instagram reader".
+  instagram: {
+    // Meta retires API versions about two years after release; bump this when they warn you.
+    apiUrl: process.env.INSTAGRAM_API_URL ?? 'https://graph.facebook.com/v23.0',
+    token: process.env.INSTAGRAM_TOKEN ?? '',
+    userId: process.env.INSTAGRAM_USER_ID ?? '', // your Instagram professional account's id
   },
 }

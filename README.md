@@ -60,7 +60,7 @@ memberships) lives in `src/state/MockProvider.tsx`; each screen loads its own da
 
 **Suggest an event:** anyone can share an event they saw on Instagram, TikTok, WhatsApp or a poster
 (link + caption and/or screenshot). The AI reads it and it joins the review queue with "Suggested by".
-We don't scrape Instagram or TikTok: their terms forbid it. An official Instagram API reader is planned.
+We don't scrape Instagram or TikTok: their terms forbid it.
 
 **Keeping it fresh:** the AI is told today's date (so "Sat 2 Nov" gets the right year). Events that are
 over, past their registration deadline, or more than ~13 months away are dropped. In production the server
@@ -69,6 +69,29 @@ looks for new events every 12 hours and deletes drafts whose date or deadline ha
 Admins are the emails in `ADMIN_EMAILS`. The AI is Google Gemini's free tier by default (see `.env.example`
 for the 3-step setup); Groq or Ollama also work. Before adding a source, check that site allows automated
 reading (its terms of use and robots.txt).
+
+## Instagram reader (official API, off until you set it up)
+
+Reads public posts with your hashtags, and the latest posts of organizer accounts you list, through Meta's
+official Instagram API. Posts older than 7 days, posts already checked, and posts with no sign of an event
+are skipped; the rest go to the AI and land in the review queue. Edit the lists in
+`server/src/modules/events/instagram.json` (max 30 different hashtags a week; organizer accounts must be
+business or creator accounts).
+
+To switch it on (Meta changes these screens often, so follow their current docs if something differs):
+
+1. In the Instagram app, switch your account to a **professional** (creator or business) account.
+2. Create a **Facebook Page** and link your Instagram account to it.
+3. At developers.facebook.com, create an app and add the **Instagram** product (with Facebook Login).
+4. Request the permissions for **Hashtag Search** and **Business Discovery** (including "Instagram Public
+   Content Access"), complete **business verification** and **App Review** (they ask for a screen recording
+   of the app). This can take from days to a couple of months.
+5. Put the access token and your Instagram account id in `.env` as `INSTAGRAM_TOKEN` and
+   `INSTAGRAM_USER_ID`. Normal user tokens expire after about 60 days; a **System User** token from Meta
+   Business Suite doesn't, so use that if you can.
+
+It then runs with the rest of the event finder (every 12 hours in production, or **Find new events**).
+It is tested against a stand-in for Meta's API, not the real one yet: expect small fixes on first real use.
 
 ## Put it online
 
