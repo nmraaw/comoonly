@@ -104,10 +104,12 @@ export function listConnections(userId: string) {
     .all(userId, userId, userId)
   const incoming = db
     .prepare(
-      `SELECT u.id, u.name, u.city FROM connections c JOIN users u ON u.id = c.from_id
+      `SELECT u.id, u.name, u.city,
+         (SELECT text FROM messages WHERE author_id = u.id AND to_id = ? ORDER BY created_at DESC LIMIT 1) AS message
+       FROM connections c JOIN users u ON u.id = c.from_id
        WHERE c.to_id = ? AND c.status = 'pending' ORDER BY c.created_at`,
     )
-    .all(userId)
+    .all(userId, userId)
   const outgoing = db
     .prepare(
       `SELECT u.id, u.name, u.city FROM connections c JOIN users u ON u.id = c.to_id

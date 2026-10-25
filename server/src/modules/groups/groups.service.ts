@@ -7,7 +7,9 @@ import type { CreateGroupInput, ListQuery } from './groups.schema.ts'
 const SELECT = `
   SELECT g.*, u.name AS owner, COUNT(m.user_id) AS members,
     g.event_id IS NOT NULL OR EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id) AS forEvent,
-    EXISTS (SELECT 1 FROM group_photos p WHERE p.group_id = g.id) AS hasPhoto
+    EXISTS (SELECT 1 FROM group_photos p WHERE p.group_id = g.id) AS hasPhoto,
+    (SELECT e.id FROM events e WHERE e.id = g.event_id OR e.group_id = g.id) AS eventId,
+    (SELECT e.title FROM events e WHERE e.id = g.event_id OR e.group_id = g.id) AS eventTitle
   FROM groups g
   JOIN users u ON u.id = g.owner_id
   LEFT JOIN group_members m ON m.group_id = g.id AND m.status = 'joined'`
@@ -49,6 +51,9 @@ function toPreview(row: any) {
     crewFor: row.event_id as string | null, // a crew: the event it's going to
     womenOnly: Boolean(row.women_only),
     hasPhoto: Boolean(row.hasPhoto),
+    // For an event's groups (everyone going, and crews): which event, so the app can show them together.
+    eventId: row.eventId as string | null,
+    eventTitle: row.eventTitle as string | null,
   }
 }
 

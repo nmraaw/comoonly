@@ -19,6 +19,8 @@ export type Group = {
   crewFor: string | null // a crew: the id of the event it's going to
   womenOnly: boolean
   hasPhoto: boolean // a photo or poster the host added
+  eventId: string | null // an event's everyone-going group or crew: that event
+  eventTitle: string | null
 }
 
 // A person (GET /api/users/:id). `connection` is how you're linked to them:

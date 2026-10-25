@@ -7,9 +7,20 @@ import { eventsFromJsonLd } from '../src/modules/events/events.finder.ts'
 // A date a number of days from now, e.g. soon(30) → '2026-11-22'. Events must be upcoming, but not years away.
 const soon = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 
-test('connections, then direct messages only between connected people', async () => {
-  const [hira, zain] = [await loginAs('hira'), await loginAs('zain')]
-  assert.equal(await status('/messages/with/zain', json({ text: 'hey' }, hira)), 403) // not connected yet
+test('message requests: one message to anyone, then a normal chat once accepted', async () => {
+  const [hira, zain, noor] = [await loginAs('hira'), await loginAs('zain'), await loginAs('noor')]
+  // Noor isn't connected to Zain: her first message is a request; a second waits for his answer.
+  assert.equal(await status('/messages/with/zain', json({ text: 'hi, saw you at the jam!' }, noor)), 201)
+  assert.equal(await status('/messages/with/zain', json({ text: 'hello??' }, noor)), 403)
+  assert.equal((await get('/connections', zain)).incoming[0].message, 'hi, saw you at the jam!')
+  assert.deepEqual(
+    (await get('/messages', noor)).people.map((p: { id: string; status: string }) => [p.id, p.status]),
+    [['zain', 'pending']],
+  )
+  assert.equal(await status('/messages/with/noor', json({ text: 'hey!' }, zain)), 201) // replying accepts
+  assert.equal((await get('/users/noor', zain)).connection, 'accepted')
+  assert.equal(await status('/messages/with/zain', json({ text: 'great' }, noor)), 201)
+
   assert.equal((await (await fetch(`${base}/users/zain/connect`, json({}, hira))).json()).status, 'pending')
   assert.equal((await get('/users/hira', zain)).connection, 'incoming')
   assert.deepEqual(
@@ -31,7 +42,10 @@ test('connections, then direct messages only between connected people', async ()
   const people = (await get('/messages', zain)).people
   assert.deepEqual(
     people.map((p: { id: string; last: string }) => [p.id, p.last]),
-    [['hira', 'hi!']],
+    [
+      ['hira', 'hi!'],
+      ['noor', 'great'],
+    ],
   )
   assert.equal(await status('/users/zain/connect', json({}, zain)), 400) // can't connect with yourself
 })

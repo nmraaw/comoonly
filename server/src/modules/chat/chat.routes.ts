@@ -3,7 +3,7 @@ import { requireAuth } from '../../middleware/auth.ts'
 import { messageSchema } from './chat.schema.ts'
 import { conversations, directMessages, groupMessages, sendDirect, sendToGroup } from './chat.service.ts'
 
-// Mounted at /api. Group chat is for members; direct messages are for accepted connections.
+// Mounted at /api. Group chat is for members; anyone can message anyone (see sendDirect for requests).
 export const chatRoutes = Router()
 
 chatRoutes.get('/groups/:id/messages', requireAuth, (req: any, res) => {

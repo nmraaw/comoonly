@@ -1186,3 +1186,15 @@ a.notice {
   padding: 7px 12px;
   white-space: nowrap;
 }
+
+/* Groups tab: an event's everyone-going chat and your crew, as rows inside the event's card. */
+.event-row {
+  display: block;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}

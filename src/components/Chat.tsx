@@ -5,7 +5,8 @@ import { api, useApi } from '../api'
 import Icon from './Icon'
 
 // One conversation: a group chat (/groups/:id/messages) or a private one (/messages/with/:userId).
-export default function Chat({ path }: { path: string }) {
+// `onSent`: the page can refresh around the chat (e.g. a message request just became a chat).
+export default function Chat({ path, onSent }: { path: string; onSent?: () => void }) {
   const { me } = useApp()
   const { data, error, reload } = useApi<Message[]>(path, 4000)
   const [draft, setDraft] = useState('')
@@ -31,6 +32,7 @@ export default function Chat({ path }: { path: string }) {
       await api(path, { method: 'POST', body: { text: draft } })
       setDraft('')
       reload()
+      onSent?.()
     } catch (err) {
       alert((err as Error).message)
     } finally {

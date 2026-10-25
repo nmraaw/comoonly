@@ -92,30 +92,40 @@ export default function Profile({
             Message {person.name} →
           </Link>
         ) : status === 'incoming' ? (
+          <>
+            <Link className="button lime" to={'/messages?chat=' + person.id}>
+              See their message →
+            </Link>
+            <div className="two-actions">
+              <button
+                className="button"
+                disabled={busy}
+                onClick={() => act('/connections/' + person.id, { decision: 'decline' })}
+              >
+                Decline
+              </button>
+              <button
+                className="button lime"
+                disabled={busy}
+                onClick={() => act('/connections/' + person.id, { decision: 'accept' })}
+              >
+                Accept connection
+              </button>
+            </div>
+          </>
+        ) : (
           <div className="two-actions">
+            <Link className="button lime" to={'/messages?chat=' + person.id}>
+              Message
+            </Link>
             <button
               className="button"
-              disabled={busy}
-              onClick={() => act('/connections/' + person.id, { decision: 'decline' })}
+              disabled={busy || status === 'pending'}
+              onClick={() => act('/users/' + person.id + '/connect')}
             >
-              Decline
-            </button>
-            <button
-              className="button lime"
-              disabled={busy}
-              onClick={() => act('/connections/' + person.id, { decision: 'accept' })}
-            >
-              Accept connection
+              {status === 'pending' ? 'Request sent' : '+ Connect'}
             </button>
           </div>
-        ) : (
-          <button
-            className="button lime"
-            disabled={busy || status === 'pending'}
-            onClick={() => act('/users/' + person.id + '/connect')}
-          >
-            {status === 'pending' ? 'Connection request pending' : '+ Connect with ' + person.name}
-          </button>
         ))}
       <h2 className="section-title">My kind of things ✧</h2>
       <div className="chips">

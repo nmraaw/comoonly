@@ -8,7 +8,7 @@ import DetailHeader from '../components/DetailHeader'
 import EventDetails from '../components/EventDetails'
 import NotFound from '../components/NotFound'
 import { CalendarPopup } from '../components/AddToCalendar'
-import { Empty, Modal } from '../components/UI'
+import { Avatar, Empty, Modal } from '../components/UI'
 
 const INTENTS: { value: Intent; title: string; text: string }[] = [
   {
@@ -104,10 +104,14 @@ export default function EventPage() {
             )}
             {crews.data?.map((c) => (
               <article className="notice lilac" key={c.id}>
-                <p>
-                  <strong>{c.ownerId === me!.id ? 'Your crew' : `${c.owner.split(' ')[0]}’s crew`}</strong>
+                <Link className="member-row" to={'/users/' + c.ownerId}>
+                  <Avatar id={c.ownerId} name={c.owner} />
+                  <span>
+                    <strong>{c.ownerId === me!.id ? 'Your crew' : `${c.owner.split(' ')[0]}’s crew`}</strong>
+                    <small>Organized by {c.ownerId === me!.id ? 'you' : c.owner} · see profile →</small>
+                  </span>
                   {c.womenOnly && <span className="pill">👩 Women only</span>}
-                </p>
+                </Link>
                 <p>
                   📍 <strong>{c.plan}</strong>
                 </p>
