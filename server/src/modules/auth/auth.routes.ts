@@ -5,9 +5,12 @@ import { createSession, deleteAccount, endSession, login, signup, verify } from 
 
 export const authRoutes = Router()
 
-// Answers { needsCode: true }: the app then asks for the code that was just emailed.
+// Answers { needsCode: true } (the app then asks for the code that was just emailed), or the new user.
 authRoutes.post('/signup', async (req, res) => {
-  res.status(202).json(await signup(signupSchema.parse(req.body)))
+  const result = await signup(signupSchema.parse(req.body))
+  if ('needsCode' in result) return res.status(202).json(result)
+  setSessionCookie(res, createSession(result.id))
+  res.status(201).json(result)
 })
 
 authRoutes.post('/verify', (req, res) => {

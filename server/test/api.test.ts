@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { base, get, json, loginAs, status } from './helpers.ts'
 import { outbox } from '../src/email.ts'
+import { config } from '../src/config.ts'
 
 test('feed returns seeded groups in the frontend shape, with filters and sorting', async () => {
   const all = await get('/groups')
@@ -46,6 +47,7 @@ test('signup, create a group, logout, delete account', async () => {
   }
   assert.equal(await status('/groups', json(group)), 401) // must log in first
 
+  config.email.user = 'comoonly@gmail.test' // email is set up: everyone gets a code (still sent to `outbox` here)
   // Sign-up only emails a code. Someone else signing up with the same email before it's verified
   // doesn't lock the owner out: the code goes to the owner's inbox, and their password wins.
   assert.equal(await status('/auth/signup', json({ name: 'X', email: 'ali@example.com', password: 'squatter1' })), 202)
@@ -90,6 +92,22 @@ test('signup, create a group, logout, delete account', async () => {
   assert.equal(await status('/auth/me', { headers: { cookie: again } }), 401)
   assert.equal(await status(`/groups/${created.id}`), 404)
   assert.equal(await status('/auth/login', json({ email: 'ali@example.com', password: 'longenough' })), 401)
+  config.email.user = ''
+})
+
+test('without email set up, people get straight in; admin emails still need the code', async () => {
+  const signup = await fetch(
+    `${base}/auth/signup`,
+    json({ name: 'Bea', email: 'bea@example.com', password: 'longenough' }),
+  )
+  assert.equal(signup.status, 201)
+  assert.ok(signup.headers.get('set-cookie'))
+  config.adminEmails.push('boss@example.com')
+  assert.equal(
+    await status('/auth/signup', json({ name: 'X', email: 'boss@example.com', password: 'longenough' })),
+    202,
+  )
+  config.adminEmails.pop()
 })
 
 test('join request: ask, host accepts or declines, member counts follow', async () => {

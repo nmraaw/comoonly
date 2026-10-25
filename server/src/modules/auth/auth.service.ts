@@ -82,9 +82,18 @@ export async function signup(input: SignupInput) {
       Date.now(),
     )
   }
+  if (!needsCode(input.email)) {
+    db.prepare('UPDATE users SET verified = 1 WHERE id = ?').run(id)
+    return findUser(id)
+  }
   await sendCode(id, input.email)
   return { needsCode: true as const }
 }
+
+// Until Gmail is set up (.env EMAIL_USER), codes can't reach people, so only admin emails need one
+// (read it in the server log): that still stops anyone claiming an admin's email.
+// shortcut: anyone can sign up as anyone else's (non-admin) email meanwhile; set up email before launch.
+const needsCode = (email: string) => Boolean(config.email.user) || config.adminEmails.includes(email)
 
 const sha256 = (code: string) => createHash('sha256').update(code).digest('hex')
 
@@ -150,8 +159,11 @@ export async function login({ email, password }: LoginInput) {
   failures.delete(email)
   // Signed up but never entered the code: send a fresh one instead of logging in.
   if (!row.verified) {
-    await sendCode(row.id, email)
-    return { needsCode: true as const }
+    if (needsCode(email)) {
+      await sendCode(row.id, email)
+      return { needsCode: true as const }
+    }
+    db.prepare('UPDATE users SET verified = 1 WHERE id = ?').run(row.id) // stuck before email was optional
   }
   return toUser(row)
 }
