@@ -22,7 +22,7 @@ function passwordMatches(password: string, stored: string) {
 // in the order the person picked them. `u` is the users table's alias in the surrounding query.
 export const INTERESTS = `(SELECT json_group_array(interest) FROM
   (SELECT interest FROM user_interests WHERE user_id = u.id ORDER BY position)) AS interests`
-const USER = `u.id, u.name, u.email, u.city, u.tagline, u.bio, u.gender, ${INTERESTS}`
+const USER = `u.id, u.name, u.email, u.city, u.tagline, u.bio, u.gender, u.instagram, u.tiktok, ${INTERESTS}`
 
 export function findUser(id: string) {
   return toUser(db.prepare(`SELECT ${USER} FROM users u WHERE u.id = ?`).get(id))
@@ -31,7 +31,7 @@ export function findUser(id: string) {
 // The logged-in person as the frontend sees them. Also used by people.service after a profile edit.
 // Lists exactly what goes out, so a new column (like password_hash) can never leak by accident.
 export function toUser(row: any) {
-  const { id, name, email, city, tagline, bio, gender } = row
+  const { id, name, email, city, tagline, bio, gender, instagram, tiktok } = row
   const interests = JSON.parse(row.interests)
   return {
     id,
@@ -41,6 +41,8 @@ export function toUser(row: any) {
     tagline,
     bio,
     gender,
+    instagram,
+    tiktok,
     interests,
     verified: isVerified({ ...row, interests }),
     isAdmin: config.adminEmails.includes(email),

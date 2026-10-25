@@ -156,4 +156,12 @@ test('profiles: edit your own, view anyone’s without their email', async () =>
   assert.equal(seen.city, 'Lahore')
   assert.equal(seen.email, undefined)
   assert.ok(seen.groups.some((g: { id: string }) => g.id === 'tiny-game'))
+
+  // Socials: a pasted link or @name becomes just the username; anything else is refused.
+  const socials = { ...profile, instagram: 'https://www.instagram.com/hira.makes/?hl=en', tiktok: '@hira_s' }
+  const withSocials = await (await fetch(`${base}/users/me`, json(socials, hira, 'PATCH'))).json()
+  assert.deepEqual([withSocials.instagram, withSocials.tiktok], ['hira.makes', 'hira_s'])
+  assert.equal(await status('/users/me', json({ ...profile, instagram: 'javascript:alert(1)' }, hira, 'PATCH')), 400)
+  const shown = await get('/users/hira', await loginAs('zain'))
+  assert.deepEqual([shown.instagram, typeof shown.joinedAt, typeof shown.events], ['hira.makes', 'number', 'number'])
 })

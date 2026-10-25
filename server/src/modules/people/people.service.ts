@@ -23,7 +23,11 @@ export function connectionStatus(viewerId: string, otherId: string) {
 // What anyone logged in can see on a profile. Email stays private.
 export function getProfile(id: string, viewerId: string) {
   const user: any = db
-    .prepare(`SELECT u.id, u.name, u.city, u.tagline, u.bio, u.gender, ${INTERESTS} FROM users u WHERE u.id = ?`)
+    .prepare(
+      `SELECT u.id, u.name, u.city, u.tagline, u.bio, u.gender, u.instagram, u.tiktok, u.created_at, ${INTERESTS},
+         (SELECT COUNT(*) FROM event_going g WHERE g.user_id = u.id) AS events
+       FROM users u WHERE u.id = ?`,
+    )
     .get(id)
   // Someone who blocked you looks like they don't exist.
   if (!user || hasBlocked(id, viewerId)) throw new HttpError(404, 'Profile not found')
@@ -42,6 +46,10 @@ export function getProfile(id: string, viewerId: string) {
     bio: user.bio,
     interests,
     verified: isVerified({ ...user, interests }), // gender itself stays private; only this badge shows
+    instagram: user.instagram,
+    tiktok: user.tiktok,
+    joinedAt: user.created_at,
+    events: user.events, // how many events they've said they're going to
     groups,
     connection: connectionStatus(viewerId, id),
     blocked: hasBlocked(viewerId, id), // you blocked them: the page offers Unblock
@@ -51,14 +59,9 @@ export function getProfile(id: string, viewerId: string) {
 // Returns the full logged-in user (with email), same shape as /api/auth/me.
 export function updateProfile(id: string, input: ProfileInput) {
   transaction(() => {
-    db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ?, gender = ? WHERE id = ?').run(
-      input.name,
-      input.city,
-      input.tagline,
-      input.bio,
-      input.gender,
-      id,
-    )
+    db.prepare(
+      'UPDATE users SET name = ?, city = ?, tagline = ?, bio = ?, gender = ?, instagram = ?, tiktok = ? WHERE id = ?',
+    ).run(input.name, input.city, input.tagline, input.bio, input.gender, input.instagram, input.tiktok, id)
     // Replace the whole list: simplest way to keep the picked order.
     db.prepare('DELETE FROM user_interests WHERE user_id = ?').run(id)
     const add = db.prepare('INSERT OR IGNORE INTO user_interests (user_id, interest, position) VALUES (?, ?, ?)')

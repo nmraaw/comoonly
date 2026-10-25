@@ -31,6 +31,10 @@ export type User = {
   bio: string
   interests: string[]
   verified: boolean // email confirmed and profile filled in: can start and join crews
+  instagram: string // username only, '' if not added
+  tiktok: string
+  joinedAt?: number // on other people's profiles: when they joined, and how many events they've gone to
+  events?: number
   connection?: 'pending' | 'incoming' | 'accepted' | null
   blocked?: boolean // you blocked this person
 }
@@ -77,7 +81,9 @@ export type Crew = {
 }
 
 export type Status = 'pending' | 'joined' // your membership of a group
-export type ProfileInput = Omit<User, 'id' | 'connection' | 'blocked' | 'verified'> & { gender: Gender }
+export type ProfileInput = Omit<User, 'id' | 'connection' | 'blocked' | 'verified' | 'joinedAt' | 'events'> & {
+  gender: Gender
+}
 export type NewGroup = {
   name: string
   description: string

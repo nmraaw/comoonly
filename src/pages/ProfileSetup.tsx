@@ -49,6 +49,8 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
         tagline: String(data.get('tagline')),
         bio: String(data.get('bio')),
         gender: String(data.get('gender')) as Gender,
+        instagram: String(data.get('instagram')),
+        tiktok: String(data.get('tiktok')),
         interests: picked,
       })
       if (!first) navigate('/me')
@@ -127,6 +129,16 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
             defaultValue={me!.bio}
             placeholder="Making music, questionable coffee, and hopefully some good friends along the way."
           />
+        </label>
+        <h2 className="section-title">Socials (optional)</h2>
+        <p className="hint">Helps people see you’re real before meeting up. Just your username.</p>
+        <label>
+          Instagram
+          <input name="instagram" maxLength={80} defaultValue={me!.instagram} placeholder="sara.draws" />
+        </label>
+        <label>
+          TikTok
+          <input name="tiktok" maxLength={80} defaultValue={me!.tiktok} placeholder="sara.draws" />
         </label>
         <h2 className="section-title">My kind of things ✧</h2>
         <div className="chips" role="group" aria-label="Interests">

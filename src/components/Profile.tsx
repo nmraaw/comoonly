@@ -49,12 +49,38 @@ export default function Profile({
         <div className="person-button">
           <Avatar id={person.id} name={person.name} />
           <div>
-            <h1>{person.name}</h1>
-            {person.verified && <span className="pill">✓ Verified</span>}
+            <h1>
+              {person.name}
+              {person.verified && (
+                <span className="verified" title="Verified profile" aria-label="Verified profile">
+                  ✓
+                </span>
+              )}
+            </h1>
             <small>{[person.city, person.tagline].filter(Boolean).join(' · ')}</small>
           </div>
         </div>
         {person.bio && <p>{person.bio}</p>}
+        {person.joinedAt !== undefined && (
+          <p className="trust-line">
+            Joined {new Date(person.joinedAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} ·{' '}
+            {person.events} {person.events === 1 ? 'event' : 'events'}
+          </p>
+        )}
+        {(person.instagram || person.tiktok) && (
+          <div className="socials">
+            {person.instagram && (
+              <a href={'https://www.instagram.com/' + person.instagram} target="_blank" rel="noopener noreferrer">
+                Instagram · @{person.instagram} ↗
+              </a>
+            )}
+            {person.tiktok && (
+              <a href={'https://www.tiktok.com/@' + person.tiktok} target="_blank" rel="noopener noreferrer">
+                TikTok · @{person.tiktok} ↗
+              </a>
+            )}
+          </div>
+        )}
       </div>
       {!own &&
         (person.blocked ? (

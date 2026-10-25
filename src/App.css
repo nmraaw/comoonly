@@ -1086,3 +1086,58 @@ a.notice {
   height: 64px;
   font-size: 20px;
 }
+
+/* Profile header: photo with a ring, name with a small verified tick, one line about them below. */
+.profile-card .person-button {
+  gap: 16px;
+}
+.profile-card .avatar {
+  width: 76px;
+  height: 76px;
+  border: 3px solid #fff;
+}
+.profile-card h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  line-height: 1.1;
+}
+.verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 900;
+}
+.profile-card p {
+  margin-top: 14px;
+}
+
+/* Trust on a profile: when they joined, how active they are, where else to find them. */
+.profile-card .trust-line {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.socials a {
+  background: #fff;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
