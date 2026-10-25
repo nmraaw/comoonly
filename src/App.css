@@ -1141,3 +1141,36 @@ a.notice {
   color: var(--ink);
   text-decoration: none;
 }
+
+/* Profile card: a big photo on the left; name, line, bio, trust and socials stacked beside it. */
+.profile-card .profile-head {
+  align-items: center;
+  gap: 16px;
+}
+.profile-card .profile-head .avatar {
+  width: 112px;
+  height: 112px;
+  font-size: 32px;
+}
+.profile-card .profile-head > div {
+  min-width: 0;
+}
+.profile-card .profile-head p {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.profile-card .profile-head .trust-line {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.profile-card .socials {
+  margin-top: 10px;
+}
+.profile-card .socials a {
+  background: var(--ink);
+  color: var(--lime);
+  padding: 7px 11px;
+}
+.profile-card .socials a {
+  white-space: nowrap;
+}
