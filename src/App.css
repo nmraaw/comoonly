@@ -883,6 +883,12 @@ input[type='file']::file-selector-button {
   align-items: center;
   gap: 10px;
 }
+/* When and where are the facts people decide on: full-strength ink, a touch bigger. */
+.info-rows strong,
+.notice.pink strong {
+  color: var(--ink);
+  font-size: 16px;
+}
 .info-rows svg {
   width: 18px;
   height: 18px;

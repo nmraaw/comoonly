@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { config } from '../../config.ts'
 import { askAi, cleanEvents, type Candidate, type Source } from './events.ai.ts'
-import { scanInstagram } from './events.instagram.ts'
-import { saveEvent } from './events.service.ts'
+import { asDataUrl, scanInstagram } from './events.instagram.ts'
+import { savePoster, saveEvent } from './events.service.ts'
 
 // Many event sites embed machine-readable event data (schema.org JSON-LD) for search engines. Read that first.
 export function eventsFromJsonLd(html: string, pageUrl: string): Candidate[] {
@@ -36,7 +36,9 @@ function fromSchemaOrg(e: any, pageUrl: string): Candidate {
   const mixed = String(e.eventAttendanceMode ?? '').includes('Mixed')
   const link = [e.offers].flat()[0]?.url ?? e.url ?? pageUrl
   const description = stripTags(String(e.description ?? '')).slice(0, 1000)
+  const image = [e.image].flat()[0]
   return {
+    ...(image && { image: typeof image === 'string' ? image : image.url }), // becomes the poster
     title: stripTags(String(e.name ?? '')),
     date: e.startDate,
     city: place.address?.addressLocality ?? '',
@@ -87,7 +89,17 @@ export async function scanSources() {
         candidates = await askAi(`Page: ${source.url}\n\n${stripTags(html).slice(0, 12_000)}`)
       }
       const events = cleanEvents(candidates, source)
-      const added = events.filter((e) => saveEvent(e)).length
+      let added = 0
+      for (const e of events) {
+        const id = saveEvent(e)
+        if (!id) continue
+        added++
+        // The page's own picture of the event becomes its poster (a missing or broken one is skipped).
+        const image = candidates.find((c) => c.title === e.title)?.image
+        const url = typeof image === 'string' ? URL.parse(image, source.url)?.href : undefined
+        const poster = await asDataUrl(url).catch(() => undefined)
+        if (poster) savePoster(id, poster)
+      }
       report.push({ source: source.name, via, found: events.length, added })
     } catch (err) {
       report.push({ source: source.name, error: (err as Error).message })

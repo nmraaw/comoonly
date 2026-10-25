@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import type { Activity, EventItem } from '../types'
 import { Avatar, Chips, Empty, Modal } from './UI'
-import EventCard from './EventCard'
+import EventDetails from './EventDetails'
 import Chat from './Chat'
 import DetailHeader from './DetailHeader'
 import { api, useApi } from '../api'
@@ -80,7 +80,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
       )}
       {tab === 'Event' && (
         <>
-          {event.data && <EventCard event={event.data} inGroup />}
+          {event.data && <EventDetails event={event.data} />}
           {event.error && <Empty>{event.error}</Empty>}
         </>
       )}

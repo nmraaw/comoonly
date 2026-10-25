@@ -63,10 +63,12 @@ test('group chat, activities and to-dos are for members only', async () => {
 test('event finder reads JSON-LD and drops past or malformed events', () => {
   const html = `<html><script type="application/ld+json">{"@type":"ItemList","itemListElement":[
     {"item":{"@type":"Event","name":"Lahore Hackathon","startDate":"${soon(60)}T10:00:00+05:00",
-      "location":{"@type":"Place","address":{"addressLocality":"Lahore"}},"url":"/e/1"}},
+      "location":{"@type":"Place","address":{"addressLocality":"Lahore"}},"url":"/e/1",
+      "image":["https://img.test/hack.jpg"]}},
     {"item":{"@type":"Event","name":"Old meetup","startDate":"2001-01-01","url":"https://x.test/old"}},
     {"item":{"@type":"Event","name":"No date","url":"https://x.test/nodate"}}]}</script>
     <script type="application/ld+json">{broken json</script></html>`
+  assert.equal(eventsFromJsonLd(html, 'https://events.test/list')[0].image, 'https://img.test/hack.jpg') // the poster
   const found = cleanEvents(eventsFromJsonLd(html, 'https://events.test/list'), {
     name: 'test',
     url: 'https://events.test/list',
@@ -104,6 +106,7 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.equal((await get('/auth/me', sara)).isAdmin, true)
 
   const [listed] = await get('/events', hira)
+  assert.equal((await get(`/events/${listed.id}`, hira)).title, 'Karachi Code Jam') // its own page
   const first = await (await fetch(`${base}/events/${listed.id}/go`, json({}, hira))).json()
   const second = await (await fetch(`${base}/events/${listed.id}/go`, json({}, zain))).json()
   assert.equal(first.groupId, second.groupId) // one group per event

@@ -98,3 +98,10 @@ eventRoutes.delete('/:id', requireAuth, requireAdmin, (req, res) => {
 eventRoutes.patch('/:id', requireAuth, requireAdmin, (req, res) => {
   res.json(updateEvent(req.params.id, eventPatchSchema.parse(req.body)))
 })
+
+// One event's page. Last on purpose: '/:id' would otherwise catch '/review'.
+eventRoutes.get('/:id', requireAuth, (req, res) => {
+  const event = getEvent(req.params.id as string)
+  if (event.status !== 'published') throw new HttpError(404, 'Event not found')
+  res.json(event)
+})

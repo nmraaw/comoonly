@@ -59,7 +59,8 @@ async function accountPosts(username: string): Promise<Post[]> {
 }
 
 // The AI reads the poster itself; Gemini wants the picture's bytes rather than an Instagram link.
-async function asDataUrl(url?: string) {
+// Also used to keep a web page's event picture as its poster.
+export async function asDataUrl(url?: string) {
   if (!url) return undefined
   const res = await fetch(url, { signal: AbortSignal.timeout(20_000) })
   const type = res.headers.get('content-type') ?? ''
