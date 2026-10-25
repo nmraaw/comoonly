@@ -10,12 +10,26 @@ export const imageSchema = z
 
 export const photoSchema = z.object({ image: imageSchema })
 
+// A voice message from the browser's recorder, as a data URL. "audio/webm;codecs=opus" keeps just "audio/webm".
+// ~3 MB of text is a ~2 MB recording: a couple of minutes.
+export const voiceSchema = z.object({
+  audio: z
+    .string()
+    .max(3_000_000, 'That recording is too long; keep it under 2 minutes')
+    .regex(
+      /^data:audio\/(webm|ogg|mp4|mpeg|aac)(;[^;,]*)*;base64,[A-Za-z0-9+/=]+$/,
+      'That isn’t a recording we can play',
+    )
+    .transform((a) => a.replace(/^(data:[^;]+)(;[^;,]*)*;base64,/, '$1;base64,')),
+})
+
 // Each kind of picture has its own table, so a person or group going away takes its picture with it.
 // Table and column names come from this list only, never from a request.
 const TABLES = {
   poster: ['event_posters', 'event_id'],
   user: ['user_photos', 'user_id'],
   group: ['group_photos', 'group_id'],
+  voice: ['message_audio', 'message_id'], // voice messages: same storage, sound instead of a picture
 } as const
 type Kind = keyof typeof TABLES
 

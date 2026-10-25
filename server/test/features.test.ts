@@ -228,3 +228,17 @@ test('profile and group photos: yours to change, anyone logged in can see them',
   assert.equal(await status('/users/me/photo', json({}, hira, 'DELETE')), 204)
   assert.equal(await status('/users/hira/photo', { headers: { cookie: zain } }), 404)
 })
+
+test('voice messages: sent in a chat, heard only by the people in it', async () => {
+  const [hira, zain] = [await loginAs('hira'), await loginAs('zain')] // Hira hosts tiny-game; Zain isn't in it
+  const audio = 'data:audio/webm;codecs=opus;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYEC'
+  assert.equal(
+    await status('/groups/tiny-game/messages/voice', json({ audio: 'data:text/plain;base64,aGk=' }, hira)),
+    400,
+  )
+  const sent = await (await fetch(`${base}/groups/tiny-game/messages/voice`, json({ audio }, hira))).json()
+  assert.deepEqual([sent.text, sent.voice], ['🎤 Voice message', 1])
+  const heard = await fetch(`${base}/voice/${sent.id}`, { headers: { cookie: hira } })
+  assert.equal(heard.headers.get('content-type'), 'audio/webm')
+  assert.equal(await status(`/voice/${sent.id}`, { headers: { cookie: zain } }), 403) // not in the group
+})

@@ -18,7 +18,14 @@ export const app = express()
 
 // Screenshots and posters are bigger than anything else, so only those routes allow ~8 MB.
 app.use(
-  ['/api/events/suggest', '/api/events/:id/poster', '/api/users/me/photo', '/api/groups/:id/photo'],
+  [
+    '/api/events/suggest',
+    '/api/events/:id/poster',
+    '/api/users/me/photo',
+    '/api/groups/:id/photo',
+    '/api/groups/:id/messages/voice',
+    '/api/messages/with/:userId/voice',
+  ],
   express.json({ limit: '8mb' }),
 )
 app.use(express.json({ limit: '100kb' })) // reads JSON request bodies into req.body
@@ -42,12 +49,23 @@ app.use('/api', notFound)
 // so the page and the API share one address and the login cookie just works.
 if (config.isProd) {
   const dist = fileURLToPath(new URL('../../dist', import.meta.url))
-  app.use(express.static(dist))
+  // Pages are always re-checked, so phones get each update; the files they load have the content's
+  // fingerprint in their name (index-a1b2c3.js), so those can be kept for a year.
+  const pageHeaders = { 'cache-control': 'no-cache' }
+  app.use(
+    express.static(dist, {
+      setHeaders: (res, path) =>
+        res.set('cache-control', path.endsWith('.html') ? 'no-cache' : 'public, max-age=31536000, immutable'),
+    }),
+  )
   // Any other page address (e.g. /groups/abc) gets the app; React Router shows the right screen.
   // /admin… gets the separate admin interface instead (src/admin), which has its own login.
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next()
-    res.sendFile(req.path.startsWith('/admin') ? 'admin/index.html' : 'index.html', { root: dist })
+    res.sendFile(req.path.startsWith('/admin') ? 'admin/index.html' : 'index.html', {
+      root: dist,
+      headers: pageHeaders,
+    })
   })
 }
 

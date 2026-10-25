@@ -4,7 +4,7 @@ import { api, useApi } from '../api'
 import { Avatar, Chips, Empty } from '../components/UI'
 import Chat from '../components/Chat'
 import NotFound from '../components/NotFound'
-import DetailHeader from '../components/DetailHeader'
+import { BackButton } from '../components/DetailHeader'
 
 type Person = { id: string; name: string; city: string; message?: string | null }
 type Conversations = {
@@ -28,14 +28,26 @@ function PrivateChat({ id }: { id: string }) {
   }
   return (
     <>
-      <DetailHeader title={user.name} fallback="/messages" />
-      <Link className="member-row" to={'/users/' + id}>
-        <Avatar id={id} name={user.name} />
-        <span>
-          <strong>{user.name}</strong>
-          <small>View profile →</small>
-        </span>
-      </Link>
+      {/* Like Instagram: who you're talking to sits in the top bar; tap it for their profile. */}
+      <header className="chat-top">
+        <BackButton fallback="/messages" />
+        <Link className="chat-who" to={'/users/' + id}>
+          <Avatar id={id} name={user.name} />
+          <span>
+            <strong>
+              {user.name}
+              {user.verified && (
+                <span className="verified" aria-label="Verified profile">
+                  ✓
+                </span>
+              )}
+            </strong>
+            <small>
+              {user.connection === 'accepted' ? 'Tap to see profile' : 'Not connected · tap to see profile'}
+            </small>
+          </span>
+        </Link>
+      </header>
       {user.blocked ? (
         <Empty>You blocked {first}. Unblock them from their profile to message again.</Empty>
       ) : (

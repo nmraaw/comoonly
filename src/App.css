@@ -1198,3 +1198,71 @@ a.notice {
   color: var(--ink);
   text-decoration: none;
 }
+
+/* A page with a chat: the chat fills the space left, so the message box sits at the bottom. */
+main:has(> .chat) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+main:has(> .chat) > * {
+  flex: none;
+}
+main:has(> .chat) > .chat {
+  flex: 1;
+  height: auto;
+  min-height: 200px;
+}
+/* Private chat top bar: back, their photo, name and tick; tap for their profile. */
+.chat-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 3px 0 8px;
+}
+.chat-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+.chat-who .avatar {
+  width: 42px;
+  height: 42px;
+}
+.chat-who strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+}
+.chat-who .verified {
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+}
+.chat-who small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Voice messages */
+.bubble audio {
+  display: block;
+  width: 100%;
+  height: 36px;
+  margin-top: 6px;
+}
+.composer.recording {
+  justify-content: space-between;
+  padding: 3px;
+}
+.composer.recording span {
+  color: #d23b3b;
+  font-weight: 700;
+  font-size: 13px;
+}

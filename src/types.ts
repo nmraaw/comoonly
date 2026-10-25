@@ -45,7 +45,8 @@ export type User = {
 export type Me = User & { email: string; isAdmin: boolean; gender: Gender }
 export type Gender = '' | 'woman' | 'man' | 'private'
 
-export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number }
+// `voice`: a voice message; its recording plays from /api/voice/:id.
+export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number; voice: 0 | 1 }
 
 // An event on the Events page or in the review queue (GET /api/events).
 export type EventItem = {

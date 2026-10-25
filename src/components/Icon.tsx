@@ -16,6 +16,7 @@ export default function Icon({ name }: { name: string }) {
     clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18 M12 7v5l3 2',
     pin: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
     calendar: 'M4 6h16v15H4z M4 10h16 M8 3v4 M16 3v4',
+    mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3 M5 11a7 7 0 0 0 14 0 M12 18v3',
   }
   return (
     <svg

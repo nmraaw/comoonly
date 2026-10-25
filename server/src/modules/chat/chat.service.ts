@@ -8,7 +8,8 @@ import { isBlocked } from '../safety/safety.service.ts'
 
 const LIMIT = 200 // newest 200 messages per conversation is plenty for small groups
 
-const SELECT = `SELECT m.id, m.author_id AS authorId, u.name AS author, m.text, m.created_at AS createdAt
+const SELECT = `SELECT m.id, m.author_id AS authorId, u.name AS author, m.text, m.created_at AS createdAt,
+    EXISTS (SELECT 1 FROM message_audio a WHERE a.message_id = m.id) AS voice
   FROM messages m JOIN users u ON u.id = m.author_id`
 
 // Query returns newest first (so LIMIT keeps the latest); the screen wants oldest first.
@@ -122,4 +123,14 @@ export function conversations(userId: string) {
     )
     .all(userId)
   return { people, groups }
+}
+
+export const VOICE_TEXT = '🎤 Voice message'
+
+// Who may hear a voice message: the group's members, or the two people in a private chat.
+export function requireCanHear(messageId: string, userId: string) {
+  const m: any = db.prepare('SELECT group_id, author_id, to_id FROM messages WHERE id = ?').get(messageId)
+  if (!m) throw new HttpError(404, 'Message not found')
+  if (m.group_id) requireMember(m.group_id, userId)
+  else if (userId !== m.author_id && userId !== m.to_id) throw new HttpError(404, 'Message not found')
 }
