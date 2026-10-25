@@ -50,6 +50,7 @@ export default function Profile({
           <Avatar name={person.name} />
           <div>
             <h1>{person.name}</h1>
+            {person.verified && <span className="pill">✓ Verified</span>}
             <small>{[person.city, person.tagline].filter(Boolean).join(' · ')}</small>
           </div>
         </div>

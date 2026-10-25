@@ -3,6 +3,7 @@ import { config } from './config.ts'
 import { seedIfEmpty } from './db/seed.ts'
 import { scanSources } from './modules/events/events.finder.ts'
 import { tidyEvents } from './modules/events/events.service.ts'
+import { followUpCrews } from './modules/events/events.going.ts'
 
 // Entry point: `npm run server`. The app starts empty; real people sign up.
 // SEED_DEMO=1 fills an empty database with sample people and groups (handy for a quick local try-out).
@@ -12,6 +13,7 @@ if (process.env.SEED_DEMO === '1') seedIfEmpty()
 // Only in production (or with AUTO_FIND=1): during development the server restarts on every save,
 // which would hit the event sites and your free AI quota over and over.
 async function findEvents() {
+  console.log('Crews followed up', followUpCrews()) // before the tidy-up deletes finished events
   console.log('Tidied events', tidyEvents())
   try {
     console.log('Event finder', JSON.stringify(await scanSources()))

@@ -56,5 +56,18 @@ export const suggestSchema = z
 // An admin adding or changing an event's poster.
 export const posterSchema = z.object({ image })
 
+// "I want to go": looking for company, happy to meet people there, or going with my own friends.
+export const goSchema = z.object({ intent: z.enum(['company', 'meet', 'friends']) })
+
+// Starting a crew. `plan` is where and when you'll meet, e.g. "Outside the main gate, 5:45".
+export const crewSchema = z.object({
+  size: z.coerce.number().int().min(2, 'A crew is 2 to 5 people').max(5, 'A crew is 2 to 5 people'),
+  womenOnly: z.boolean().default(false),
+  plan: z.string().trim().min(1, 'Say where and when you’ll meet').max(200),
+  area: z.string().trim().max(80).default(''), // where you're coming from, e.g. "Gulshan"
+})
+
+export type Intent = z.infer<typeof goSchema>['intent']
+export type CrewInput = z.infer<typeof crewSchema>
 export type EventInput = z.infer<typeof eventSchema>
 export type EventPatch = z.infer<typeof eventPatchSchema>

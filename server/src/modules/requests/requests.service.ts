@@ -1,5 +1,6 @@
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
+import { findUser, requireVerified } from '../auth/auth.service.ts'
 import { getGroup } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { nameOf } from '../people/people.service.ts'
@@ -41,6 +42,11 @@ export function requestToJoin(groupId: string, userId: string, intro: string) {
   if (status) return status // already waiting or already in: nothing to do
   if (group.spots === 0) throw new HttpError(409, 'This group is full')
   if (isBlocked(group.ownerId, userId)) throw new HttpError(403, 'You can’t join this group')
+  if (group.crewFor) {
+    // Crews meet strangers in person: verified profiles only, and women-only crews are for women.
+    requireVerified(userId)
+    if (group.womenOnly && findUser(userId).gender !== 'woman') throw new HttpError(403, 'This crew is for women only')
+  }
   db.prepare("INSERT INTO group_members (group_id, user_id, status, intro) VALUES (?, ?, 'pending', ?)").run(
     groupId,
     userId,

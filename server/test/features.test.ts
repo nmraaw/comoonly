@@ -107,8 +107,8 @@ test('admins publish events; anyone can find people to go with', async () => {
 
   const [listed] = await get('/events', hira)
   assert.equal((await get(`/events/${listed.id}`, hira)).title, 'Karachi Code Jam') // its own page
-  const first = await (await fetch(`${base}/events/${listed.id}/go`, json({}, hira))).json()
-  const second = await (await fetch(`${base}/events/${listed.id}/go`, json({}, zain))).json()
+  const first = await (await fetch(`${base}/events/${listed.id}/go`, json({ intent: 'company' }, hira))).json()
+  const second = await (await fetch(`${base}/events/${listed.id}/go`, json({ intent: 'meet' }, zain))).json()
   assert.equal(first.groupId, second.groupId) // one group per event
   assert.equal((await get(`/groups/${first.groupId}`)).forEvent, true) // kept off Discover
   assert.equal((await get('/events', hira))[0].goingCount, 2)
@@ -168,6 +168,42 @@ test('admins publish events; anyone can find people to go with', async () => {
     'string',
   )
   assert.equal(await status('/events/review', { headers: { cookie: hira } }), 403)
+
+  // Going together. "With my friends" stays out of the everyone-going chat.
+  const noor = await loginAs('noor')
+  const going = await (await fetch(`${base}/events/${listed.id}/go`, json({ intent: 'friends' }, noor))).json()
+  assert.deepEqual(going, { groupId: null })
+  assert.equal((await get(`/events/${listed.id}`, noor)).myIntent, 'friends')
+  assert.equal(await status(`/groups/${first.groupId}/messages`, { headers: { cookie: noor } }), 403)
+
+  // Crews: verified profiles only; women-only crews are invisible and closed to men; the organizer accepts people.
+  const { db } = await import('../src/db/connection.ts')
+  const crew = { size: 3, womenOnly: true, plan: 'Main gate, 8:45' }
+  assert.equal(await status(`/events/${listed.id}/crews`, json(crew, hira)), 403) // no gender yet: not verified
+  db.prepare("UPDATE users SET gender = 'woman' WHERE id IN ('hira', 'noor')").run()
+  db.prepare("UPDATE users SET gender = 'man' WHERE id = 'zain'").run()
+  assert.equal((await get('/auth/me', hira)).verified, true)
+  const { id: crewId } = await (await fetch(`${base}/events/${listed.id}/crews`, json(crew, hira))).json()
+  assert.deepEqual(await get(`/events/${listed.id}/crews`, zain), []) // hidden from men
+  assert.equal(await status(`/groups/${crewId}/requests`, json({ intro: 'hi' }, zain)), 403)
+  const asked = await (await fetch(`${base}/groups/${crewId}/requests`, json({ intro: 'Can I come?' }, noor))).json()
+  assert.equal(asked.status, 'pending')
+  assert.equal(await status(`/groups/${crewId}/requests/noor`, json({ decision: 'accept' }, hira)), 200)
+  const [listedCrew] = await get(`/events/${listed.id}/crews`, noor)
+  assert.deepEqual(
+    [listedCrew.members, listedCrew.size, listedCrew.womenOnly, listedCrew.myStatus],
+    [2, 3, true, 'joined'],
+  )
+  assert.equal((await get(`/groups/${crewId}`)).forEvent, true) // crews stay off Discover
+  // The database guards women-only crews too, whatever the server code does.
+  assert.throws(() => db.prepare("INSERT INTO group_members (group_id, user_id) VALUES (?, 'zain')").run(crewId))
+
+  // After the event, crew members hear who they went with (once).
+  const { followUpCrews } = await import('../src/modules/events/events.going.ts')
+  db.prepare("UPDATE events SET starts_at = '2001-01-01' WHERE id = ?").run(listed.id)
+  assert.equal(followUpCrews(), 1)
+  assert.equal(followUpCrews(), 0)
+  assert.match((await get('/notifications', noor))[0].text, /with Hira\. Say thanks and connect!/)
 
   // Deleting an event (admins only) removes its go-together group too.
   assert.equal(await status(`/events/${listed.id}`, json({}, hira, 'DELETE')), 403)

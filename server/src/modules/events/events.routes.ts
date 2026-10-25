@@ -1,13 +1,13 @@
 import { Router } from 'express'
 import { requireAdmin, requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { eventPatchSchema, eventSchema, posterSchema, suggestSchema } from './events.schema.ts'
+import { crewSchema, eventPatchSchema, eventSchema, goSchema, posterSchema, suggestSchema } from './events.schema.ts'
+import { createCrew, goTo, intentOf, intentsOf, listCrews, notGoing } from './events.going.ts'
 import {
   deleteEvent,
   eventForGroup,
   getEvent,
   getPoster,
-  goWith,
   listDrafts,
   savePoster,
   listPublished,
@@ -21,13 +21,28 @@ import { sendIcs } from '../../calendar.ts'
 export const eventRoutes = Router()
 
 // Everyone (logged in): upcoming published events.
-eventRoutes.get('/', requireAuth, (_req, res) => {
-  res.json(listPublished())
+eventRoutes.get('/', requireAuth, (req: any, res) => {
+  const mine = intentsOf(req.user.id)
+  res.json(listPublished().map((e: any) => ({ ...e, myIntent: mine.get(e.id) ?? null })))
 })
 
 // "Find people to go with" → the event's group id, to open it.
+// "I want to go" (or change how). Answers the everyone-going group's id, or null for "with my friends".
 eventRoutes.post('/:id/go', requireAuth, (req: any, res) => {
-  res.json({ groupId: goWith(req.params.id, req.user.id) })
+  res.json({ groupId: goTo(req.params.id, req.user.id, goSchema.parse(req.body).intent) })
+})
+
+eventRoutes.delete('/:id/go', requireAuth, (req: any, res) => {
+  notGoing(req.params.id, req.user.id)
+  res.status(204).end()
+})
+
+eventRoutes.get('/:id/crews', requireAuth, (req: any, res) => {
+  res.json(listCrews(req.params.id, req.user.id))
+})
+
+eventRoutes.post('/:id/crews', requireAuth, (req: any, res) => {
+  res.status(201).json({ id: createCrew(req.params.id, req.user.id, crewSchema.parse(req.body)) })
 })
 
 // The event an event group is for (its "Event" tab).
@@ -100,8 +115,8 @@ eventRoutes.patch('/:id', requireAuth, requireAdmin, (req, res) => {
 })
 
 // One event's page. Last on purpose: '/:id' would otherwise catch '/review'.
-eventRoutes.get('/:id', requireAuth, (req, res) => {
-  const event = getEvent(req.params.id as string)
+eventRoutes.get('/:id', requireAuth, (req: any, res) => {
+  const event = getEvent(req.params.id)
   if (event.status !== 'published') throw new HttpError(404, 'Event not found')
-  res.json(event)
+  res.json({ ...event, myIntent: intentOf(event.id, req.user.id) })
 })

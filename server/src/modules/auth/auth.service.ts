@@ -22,7 +22,7 @@ function passwordMatches(password: string, stored: string) {
 // in the order the person picked them. `u` is the users table's alias in the surrounding query.
 export const INTERESTS = `(SELECT json_group_array(interest) FROM
   (SELECT interest FROM user_interests WHERE user_id = u.id ORDER BY position)) AS interests`
-const USER = `u.id, u.name, u.email, u.city, u.tagline, u.bio, ${INTERESTS}`
+const USER = `u.id, u.name, u.email, u.city, u.tagline, u.bio, u.gender, ${INTERESTS}`
 
 export function findUser(id: string) {
   return toUser(db.prepare(`SELECT ${USER} FROM users u WHERE u.id = ?`).get(id))
@@ -31,7 +31,8 @@ export function findUser(id: string) {
 // The logged-in person as the frontend sees them. Also used by people.service after a profile edit.
 // Lists exactly what goes out, so a new column (like password_hash) can never leak by accident.
 export function toUser(row: any) {
-  const { id, name, email, city, tagline, bio } = row
+  const { id, name, email, city, tagline, bio, gender } = row
+  const interests = JSON.parse(row.interests)
   return {
     id,
     name,
@@ -39,9 +40,22 @@ export function toUser(row: any) {
     city,
     tagline,
     bio,
-    interests: JSON.parse(row.interests),
+    gender,
+    interests,
+    verified: isVerified({ ...row, interests }),
     isAdmin: config.adminEmails.includes(email),
   }
+}
+
+// A verified profile: email confirmed at sign-up (every account that can log in) and the profile filled in:
+// city, gender, a line about yourself and interests. Needed to start or join a crew.
+export function isVerified(u: { city: string; gender: string; tagline: string; bio: string; interests: string[] }) {
+  return Boolean(u.city && u.gender && (u.tagline || u.bio) && u.interests.length)
+}
+
+export function requireVerified(userId: string) {
+  if (!findUser(userId).verified)
+    throw new HttpError(403, 'Finish your profile first (city, gender, a line about you, interests) to join crews')
 }
 
 // Sign-up doesn't log you in: it emails a 6-digit code, and entering it (verify) does.

@@ -15,7 +15,9 @@ export type Group = {
   ownerId: string
   initials: string
   color: string
-  forEvent: boolean // an event's "go together" group: reached from the event, not listed on Discover
+  forEvent: boolean // an event's "everyone going" group or a crew: reached from the event, not listed on Discover
+  crewFor: string | null // a crew: the id of the event it's going to
+  womenOnly: boolean
 }
 
 // A person (GET /api/users/:id). `connection` is how you're linked to them:
@@ -27,12 +29,14 @@ export type User = {
   tagline: string
   bio: string
   interests: string[]
+  verified: boolean // email confirmed and profile filled in: can start and join crews
   connection?: 'pending' | 'incoming' | 'accepted' | null
   blocked?: boolean // you blocked this person
 }
 
 // The logged-in person (GET /api/auth/me).
-export type Me = User & { email: string; isAdmin: boolean }
+export type Me = User & { email: string; isAdmin: boolean; gender: Gender }
+export type Gender = '' | 'woman' | 'man' | 'private'
 
 export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number }
 export type Activity = {
@@ -63,10 +67,27 @@ export type EventItem = {
   groupId: string | null
   goingCount: number
   hasPoster: 0 | 1
+  myIntent?: Intent | null // how you're going, if you are
+}
+
+// How someone is going to an event. Company and meet put you in the everyone-going group chat.
+export type Intent = 'company' | 'meet' | 'friends'
+
+// A small group going to one event together (GET /api/events/:id/crews).
+export type Crew = {
+  id: string
+  plan: string // where and when they'll meet
+  area: string // where they're coming from
+  size: number
+  members: number
+  womenOnly: boolean
+  owner: string
+  ownerId: string
+  myStatus: 'pending' | 'joined' | 'declined' | null
 }
 
 export type Status = 'pending' | 'joined' // your membership of a group
-export type ProfileInput = Omit<User, 'id' | 'connection' | 'blocked'>
+export type ProfileInput = Omit<User, 'id' | 'connection' | 'blocked' | 'verified'> & { gender: Gender }
 export type NewGroup = {
   name: string
   description: string

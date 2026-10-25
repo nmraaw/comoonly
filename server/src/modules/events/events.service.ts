@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { createGroup, getGroup, isMember } from '../groups/groups.service.ts'
 import { INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
@@ -9,7 +8,7 @@ import type { EventInput, EventPatch } from './events.schema.ts'
 const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description,
     e.register_url AS registerUrl, e.source_url AS sourceUrl, e.status, e.group_id AS groupId,
     (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy,
-    (SELECT COUNT(*) FROM group_members m WHERE m.group_id = e.group_id AND m.status = 'joined') AS goingCount,
+    (SELECT COUNT(*) FROM event_going g WHERE g.event_id = e.id) AS goingCount,
     EXISTS (SELECT 1 FROM event_posters p WHERE p.event_id = e.id) AS hasPoster
   FROM events e`
 
@@ -97,7 +96,12 @@ export function getPoster(eventId: string) {
 
 // The event an event group was made for, shown at the top of that group.
 export function eventForGroup(groupId: string) {
-  const event = db.prepare(`${SELECT} WHERE e.group_id = ? AND e.status = 'published'`).get(groupId)
+  // The event's own group, or one of its crews.
+  const event = db
+    .prepare(
+      `${SELECT} WHERE e.status = 'published' AND (e.group_id = ? OR e.id = (SELECT event_id FROM groups WHERE id = ?))`,
+    )
+    .get(groupId, groupId)
   if (!event) throw new HttpError(404, 'Event not found')
   return event
 }
@@ -189,33 +193,4 @@ export function updateEvent(id: string, patch: EventPatch) {
   const after = getEvent(id)
   if (after.status === 'published' && before.status !== 'published') announce(after)
   return after
-}
-
-// "Find people to go with": the first person creates the event's group, everyone after joins it directly.
-export function goWith(eventId: string, userId: string) {
-  const event = getEvent(eventId)
-  if (event.status !== 'published') throw new HttpError(404, 'Event not found')
-  return transaction(() => {
-    if (!event.groupId) {
-      const group = createGroup(userId, {
-        name: `Going to ${event.title}`.slice(0, 70),
-        description: `Find people to go with to ${event.title}. Plan together, then go together.`.slice(0, 400),
-        category: event.category,
-        mode: event.mode,
-        location: event.mode === 'Online' ? 'Online' : event.city || 'Pakistan',
-        spots: 49,
-      } as any) // event categories (e.g. "Hackathon") are wider than the group form's choices
-      db.prepare('UPDATE events SET group_id = ? WHERE id = ?').run(group.id, eventId)
-      return group.id
-    }
-    // Event groups are open: no host approval. If you'd been declined or were pending, you're in now.
-    if (!isMember(event.groupId, userId) && getGroup(event.groupId)?.spots === 0) {
-      throw new HttpError(409, 'This event group is full')
-    }
-    db.prepare(
-      `INSERT INTO group_members (group_id, user_id, status) VALUES (?, ?, 'joined')
-       ON CONFLICT (group_id, user_id) DO UPDATE SET status = 'joined'`,
-    ).run(event.groupId, userId)
-    return event.groupId as string
-  })
 }

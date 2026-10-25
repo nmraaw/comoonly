@@ -5,7 +5,7 @@ import Profile from '../components/Profile'
 import { Empty, Modal } from '../components/UI'
 import { useApp } from '../state/AppContext'
 export default function Me() {
-  const { groups, membership, logout } = useApp()
+  const { me, groups, membership, logout } = useApp()
   const mine = groups.filter((g) => membership[g.id] === 'joined')
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
@@ -28,6 +28,12 @@ export default function Me() {
         </Link>
       </header>
       <Profile own />
+      {!me!.verified && (
+        <Link className="notice pink" to="/me/edit">
+          <strong>Get ✓ Verified</strong> to go to events in a crew: add your city, gender, a line about you and
+          interests →
+        </Link>
+      )}
       <h2 className="section-title">My circles</h2>
       <div className="stack">
         {mine.map((g) => (

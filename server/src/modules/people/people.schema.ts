@@ -6,6 +6,8 @@ export const profileSchema = z.object({
   city: z.string().trim().max(80).default(''),
   tagline: z.string().trim().max(80).default(''),
   bio: z.string().trim().max(400, 'Keep your bio under 400 characters').default(''),
+  // '' = not said. Only "woman" can join women-only crews.
+  gender: z.enum(['', 'woman', 'man', 'private']).default(''),
   interests: z
     .array(z.string().trim().min(1).max(30))
     .min(1, 'Pick at least one interest')

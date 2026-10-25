@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DetailHeader from '../components/DetailHeader'
 import { Logo } from '../components/UI'
 import { useApp } from '../state/AppContext'
+import type { Gender } from '../types'
 // The last four match event types, so you hear about new hackathons, workshops etc. (see events.service.ts).
 const INTERESTS = [
   'Music',
@@ -40,6 +41,7 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
         city: String(data.get('city')),
         tagline: String(data.get('tagline')),
         bio: String(data.get('bio')),
+        gender: String(data.get('gender')) as Gender,
         interests: picked,
       })
       if (!first) navigate('/me')
@@ -86,6 +88,19 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
           City
           <input name="city" maxLength={80} defaultValue={me!.city} placeholder="Sialkot" />
         </label>
+        <label>
+          I am
+          <select name="gender" defaultValue={me!.gender}>
+            <option value="">Choose…</option>
+            <option value="woman">A woman</option>
+            <option value="man">A man</option>
+            <option value="private">Prefer not to say</option>
+          </select>
+        </label>
+        <p className="hint">
+          Only used for women-only crews, never shown on your profile. A full profile (city, this, a line about you,
+          interests) gets you ✓ Verified, needed to go to events in a crew.
+        </p>
         <label>
           A short line about you
           <input name="tagline" maxLength={80} defaultValue={me!.tagline} placeholder="Here for the music" />

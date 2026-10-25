@@ -1,6 +1,6 @@
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { findUser, INTERESTS } from '../auth/auth.service.ts'
+import { findUser, INTERESTS, isVerified } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { hasBlocked, isBlocked } from '../safety/safety.service.ts'
 import type { ProfileInput } from './people.schema.ts'
@@ -23,7 +23,7 @@ export function connectionStatus(viewerId: string, otherId: string) {
 // What anyone logged in can see on a profile. Email stays private.
 export function getProfile(id: string, viewerId: string) {
   const user: any = db
-    .prepare(`SELECT u.id, u.name, u.city, u.tagline, u.bio, ${INTERESTS} FROM users u WHERE u.id = ?`)
+    .prepare(`SELECT u.id, u.name, u.city, u.tagline, u.bio, u.gender, ${INTERESTS} FROM users u WHERE u.id = ?`)
     .get(id)
   // Someone who blocked you looks like they don't exist.
   if (!user || hasBlocked(id, viewerId)) throw new HttpError(404, 'Profile not found')
@@ -33,9 +33,15 @@ export function getProfile(id: string, viewerId: string) {
        WHERE m.user_id = ? AND m.status = 'joined' ORDER BY m.rowid`,
     )
     .all(id)
+  const interests = JSON.parse(user.interests)
   return {
-    ...user,
-    interests: JSON.parse(user.interests),
+    id: user.id,
+    name: user.name,
+    city: user.city,
+    tagline: user.tagline,
+    bio: user.bio,
+    interests,
+    verified: isVerified({ ...user, interests }), // gender itself stays private; only this badge shows
     groups,
     connection: connectionStatus(viewerId, id),
     blocked: hasBlocked(viewerId, id), // you blocked them: the page offers Unblock
@@ -45,11 +51,12 @@ export function getProfile(id: string, viewerId: string) {
 // Returns the full logged-in user (with email), same shape as /api/auth/me.
 export function updateProfile(id: string, input: ProfileInput) {
   transaction(() => {
-    db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ? WHERE id = ?').run(
+    db.prepare('UPDATE users SET name = ?, city = ?, tagline = ?, bio = ?, gender = ? WHERE id = ?').run(
       input.name,
       input.city,
       input.tagline,
       input.bio,
+      input.gender,
       id,
     )
     // Replace the whole list: simplest way to keep the picked order.

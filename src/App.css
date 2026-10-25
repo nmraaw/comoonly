@@ -884,9 +884,11 @@ input[type='file']::file-selector-button {
   gap: 10px;
 }
 /* When and where are the facts people decide on: full-strength ink, a touch bigger. */
+.notice strong {
+  color: var(--ink);
+}
 .info-rows strong,
 .notice.pink strong {
-  color: var(--ink);
   font-size: 16px;
 }
 .info-rows svg {
@@ -975,4 +977,23 @@ input[type='file']::file-selector-button {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* "How are you going?": each answer is one big tappable card. */
+.notice.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* A whole notice that's a link (e.g. "Get ✓ Verified →"). */
+a.notice {
+  display: block;
+  color: var(--ink);
+  text-decoration: none;
 }

@@ -5,8 +5,16 @@ import AddToCalendar from './AddToCalendar'
 import Icon from './Icon'
 
 // Everything about one event, the event first: poster, heading, when and where (bold), then the main
-// actions (`children`), then the details and side actions. On the event's page and its group's Event tab.
-export default function EventDetails({ event: e, children }: { event: EventItem; children?: ReactNode }) {
+// actions (`children`), then the details and side actions (`after`, calendar, share). On the event's page and its group's Event tab.
+export default function EventDetails({
+  event: e,
+  children,
+  after,
+}: {
+  event: EventItem
+  children?: ReactNode // the main actions, right under when and where
+  after?: ReactNode // more about going, before the calendar and share
+}) {
   const countdown = eventCountdown(e)
   async function share() {
     const url = location.origin + '/events/' + e.id
@@ -61,6 +69,7 @@ export default function EventDetails({ event: e, children }: { event: EventItem;
           <p>{e.description}</p>
         </>
       )}
+      {after}
       <AddToCalendar {...eventCalendar(e)} />
       <button className="button" onClick={share}>
         Share with a friend

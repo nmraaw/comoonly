@@ -67,6 +67,12 @@ export default function GroupWorkspace({ id }: { id: string }) {
           {group.members} {group.members === 1 ? 'person' : 'people'} · your crew
         </small>
       </div>
+      {group.crewFor && (
+        <p className="notice mint">
+          📍 <strong>Meeting: {group.description}</strong>
+          {group.womenOnly && ' · 👩 Women only'}
+        </p>
+      )}
       <Chips label="Group sections" values={sections} value={tab} onChange={(v) => setParams({ tab: v })} />
       {tab === 'Chat' && (
         <>

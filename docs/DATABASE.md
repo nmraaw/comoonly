@@ -23,6 +23,9 @@ erDiagram
     users ||--o{ sessions : "logs in with"
     users ||--o| email_codes : "confirms email with"
     events ||--o| event_posters : "shows"
+    events ||--o{ event_going : "who goes, and how"
+    users ||--o{ event_going : "goes to"
+    events ||--o{ groups : "crews going together"
     users ||--o{ connections : "asks / is asked"
     users ||--o{ groups : "hosts"
     users ||--o{ group_members : "joins / requests"
@@ -49,6 +52,12 @@ erDiagram
         text tagline
         text bio
         int verified "0 or 1"
+        int created_at
+    }
+    event_going {
+        text event_id PK,FK
+        text user_id PK,FK
+        text intent "company | meet | friends"
         int created_at
     }
     event_posters {
@@ -186,11 +195,12 @@ friendly message; the database constraints are the last line of defence.
 |---|---|---|
 | `users` | a person | they're deleted (cascades to almost everything they own) |
 | `user_interests` | one interest of one person | profile is re-saved / person deleted |
+| `event_going` | one person going to one event, and how (looking for company, happy to meet, with friends) | they're not going any more / event deleted |
 | `event_posters` | an event's poster picture | event deleted / poster replaced |
 | `sessions` | one logged-in browser | logout, expiry, person deleted |
 | `email_codes` | the 6-digit sign-up code waiting to be entered (hashed) | entered, replaced by a new one, person deleted |
 | `connections` | a request or friendship between two people | declined, blocked, person deleted |
-| `groups` | a small group (or an event's go-together group) | host deleted |
+| `groups` | a small group, an event's "everyone going" group, or a crew (`event_id` set; `women_only` kept by a trigger) | host deleted |
 | `group_members` | someone in, waiting for, or declined from a group | they leave / cancel |
 | `saved_groups` | a bookmark | un-saved |
 | `activities` / `rsvps` | a plan in a group / someone going to it | group deleted / un-RSVP |

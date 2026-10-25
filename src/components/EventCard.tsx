@@ -1,13 +1,11 @@
 import { Link } from 'react-router-dom'
-import { useApp } from '../state/AppContext'
 import type { EventItem } from '../types'
 import { eventPlace, eventWhen } from '../events'
 import { Mascot } from './UI'
 
 // One published event in a list (Discover, the Events page). Everything else is on its own page.
 export default function EventCard({ event: e }: { event: EventItem }) {
-  const { membership } = useApp()
-  const going = Boolean(e.groupId && membership[e.groupId] === 'joined')
+  const going = Boolean(e.myIntent)
   return (
     <article className="group-card expanded" data-card-id={e.id}>
       {Boolean(e.hasPoster) && (
