@@ -7,7 +7,7 @@ import { db } from '../src/db/connection.ts'
 test('the database itself rejects invalid data', () => {
   const rejects = (sql: string, ...params: (string | number)[]) => assert.throws(() => db.prepare(sql).run(...params))
 
-  assert.equal((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 1) // migration 001 applied
+  assert.equal((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 2) // migrations 001 and 002 applied
 
   // One connection per pair, whichever way round it was asked; nobody connects with themselves.
   db.prepare("INSERT INTO connections (from_id, to_id, created_at) VALUES ('hira', 'zain', 0)").run()
@@ -23,6 +23,7 @@ test('the database itself rejects invalid data', () => {
   rejects("INSERT INTO blocks (blocker_id, blocked_id, created_at) VALUES ('sara', 'sara', 0)")
   rejects("INSERT INTO users (id, name, email, password_hash, created_at) VALUES ('x', 'X', 'Not@Lower.case', 'h', 0)")
   rejects("UPDATE groups SET mode = 'Underwater' WHERE id = 'film-club'")
+  rejects("UPDATE users SET verified = 2 WHERE id = 'sara'")
 
   // Deleting a person removes what only made sense with them, but keeps events they suggested.
   db.prepare("UPDATE events SET suggested_by = 'zain'").run()

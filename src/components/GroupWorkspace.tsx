@@ -6,6 +6,8 @@ import { Avatar, Chips, Empty, Mascot, Modal } from './UI'
 import Chat from './Chat'
 import DetailHeader from './DetailHeader'
 import { api, useApi } from '../api'
+import { CalendarPopup } from './AddToCalendar'
+import { activityCalendar } from '../calendar'
 const when = (date: string) => new Date(date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 export default function GroupWorkspace({ id }: { id: string }) {
   const { me, groups, refresh } = useApp()
@@ -14,6 +16,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
   const tab = ['Chat', 'Activities', 'To-do', 'Members'].includes(params.get('tab') || '') ? params.get('tab')! : 'Chat'
   const [form, setForm] = useState<'task' | 'event' | null>(null)
   const [error, setError] = useState('')
+  const [joinedActivity, setJoinedActivity] = useState<Activity>() // just joined: offer the calendar
   const group = groups.find((g) => g.id === id)
   const host = group?.ownerId === me!.id
   const members = useApi<{ id: string; name: string; role: string }[]>('/groups/' + id + '/members')
@@ -127,13 +130,19 @@ export default function GroupWorkspace({ id }: { id: string }) {
               <button
                 className={'button ' + (event.going ? 'lime' : '')}
                 aria-pressed={event.going}
-                onClick={() => run(api('/activities/' + event.id + '/going', { method: 'POST' }), activities)}
+                onClick={async () => {
+                  await run(api('/activities/' + event.id + '/going', { method: 'POST' }), activities)
+                  if (!event.going) setJoinedActivity(event)
+                }}
               >
                 {event.going ? '✓ I’m going' : 'Join activity'}
               </button>
             </article>
           ))}
           {activities.data && !events.length && <Empty>No activities yet.</Empty>}
+          {joinedActivity && (
+            <CalendarPopup {...activityCalendar(joinedActivity)} onClose={() => setJoinedActivity(undefined)} />
+          )}
           <button className="button" onClick={() => setForm('event')}>
             ＋ Plan an activity
           </button>

@@ -2,9 +2,10 @@ import { Router } from 'express'
 import { requireAdmin, requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { eventPatchSchema, eventSchema, suggestSchema } from './events.schema.ts'
-import { goWith, listDrafts, listPublished, saveEvent, updateEvent } from './events.service.ts'
+import { getEvent, goWith, listDrafts, listPublished, saveEvent, updateEvent } from './events.service.ts'
 import { eventsFromPost } from './events.ai.ts'
 import { scanSources } from './events.finder.ts'
+import { sendIcs } from '../../calendar.ts'
 
 export const eventRoutes = Router()
 
@@ -16,6 +17,14 @@ eventRoutes.get('/', requireAuth, (_req, res) => {
 // "Find people to go with" → the event's group id, to open it.
 eventRoutes.post('/:id/go', requireAuth, (req: any, res) => {
   res.json({ groupId: goWith(req.params.id, req.user.id) })
+})
+
+// "Add to calendar" (Apple, Outlook, phones).
+eventRoutes.get('/:id/calendar.ics', requireAuth, (req, res) => {
+  const e = getEvent(req.params.id as string)
+  if (e.status !== 'published') throw new HttpError(404, 'Event not found')
+  const place = e.mode === 'Online' ? 'Online' : e.city
+  sendIcs(res, { ...e, place, details: `${e.description}\n\nRegister: ${e.registerUrl}`.trim() })
 })
 
 // "Suggest an event": anyone shares a post (Instagram, TikTok, a poster). The AI reads it; an admin approves.

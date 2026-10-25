@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Chips, Mascot } from '../components/UI'
 import { useApp } from '../state/AppContext'
 export default function Create() {
-  const { create } = useApp()
+  const { me, create } = useApp()
   const [category, setCategory] = useState('Creative')
   const [mode, setMode] = useState('In person')
   const [created, setCreated] = useState<string | null>(null)
@@ -85,7 +85,7 @@ export default function Create() {
         {mode !== 'Online' && (
           <label>
             Where?
-            <input name="location" required defaultValue="Sialkot" maxLength={80} />
+            <input name="location" required defaultValue={me!.city} placeholder="Your city" maxLength={80} />
           </label>
         )}
         <label>

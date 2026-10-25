@@ -1,8 +1,9 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
-import { db } from '../../db/connection.ts'
+import { createHash, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
+import { db, transaction } from '../../db/connection.ts'
 import { config } from '../../config.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import type { LoginInput, SignupInput } from './auth.schema.ts'
+import { sendEmail } from '../../email.ts'
+import type { LoginInput, SignupInput, VerifyInput } from './auth.schema.ts'
 
 // Passwords are never stored. We keep "salt:hash"; the random salt makes equal passwords look different.
 // shortcut: scryptSync blocks the server for ~50ms per login, fine at hackathon scale, use async scrypt for real traffic.
@@ -43,33 +44,87 @@ export function toUser(row: any) {
   }
 }
 
-export function signup(input: SignupInput) {
-  if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(input.email)) {
-    throw new HttpError(409, 'That email is already registered')
+// Sign-up doesn't log you in: it emails a 6-digit code, and entering it (verify) does.
+// An unverified account is only a claim, so signing up again with its email takes it over:
+// a stranger can't block the real owner, and only the owner can ever finish it.
+export async function signup(input: SignupInput) {
+  const existing: any = db.prepare('SELECT id, verified FROM users WHERE email = ?').get(input.email)
+  if (existing?.verified) throw new HttpError(409, 'That email is already registered')
+  const id = existing?.id ?? randomUUID()
+  if (existing) {
+    db.prepare('UPDATE users SET name = ?, password_hash = ?, city = ? WHERE id = ?').run(
+      input.name,
+      hashPassword(input.password),
+      input.city,
+      id,
+    )
+  } else {
+    db.prepare('INSERT INTO users (id, name, email, password_hash, city, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      id,
+      input.name,
+      input.email,
+      hashPassword(input.password),
+      input.city,
+      Date.now(),
+    )
   }
-  const id = randomUUID()
-  db.prepare('INSERT INTO users (id, name, email, password_hash, city, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-    id,
-    input.name,
-    input.email,
-    hashPassword(input.password),
-    input.city,
-    Date.now(),
+  await sendCode(id, input.email)
+  return { needsCode: true as const }
+}
+
+const sha256 = (code: string) => createHash('sha256').update(code).digest('hex')
+
+// At most one email a minute per person, so nobody can flood someone's inbox through our sign-up form.
+async function sendCode(userId: string, email: string) {
+  const now = Date.now()
+  const last: any = db.prepare('SELECT created_at FROM email_codes WHERE user_id = ?').get(userId)
+  if (last && now - last.created_at < 60_000) return
+  const code = String(randomInt(1_000_000)).padStart(6, '0')
+  db.prepare(
+    `INSERT INTO email_codes (user_id, code_hash, created_at, expires_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (user_id) DO UPDATE SET code_hash = excluded.code_hash, tries = 0,
+       created_at = excluded.created_at, expires_at = excluded.expires_at`,
+  ).run(userId, sha256(code), now, now + 15 * 60_000)
+  await sendEmail(
+    email,
+    `${code} is your Comoonly code`,
+    `Your Comoonly code is ${code}\n\nIt works for 15 minutes. If you didn't sign up, ignore this email.`,
   )
-  return findUser(id)
+}
+
+// The code proves the email is theirs. Their password is saved again too, in case someone else
+// signed up with this email in between (see signup).
+export function verify({ email, password, code }: VerifyInput) {
+  const row: any = db
+    .prepare(
+      'SELECT u.id, c.code_hash, c.tries, c.expires_at FROM users u JOIN email_codes c ON c.user_id = u.id WHERE u.email = ?',
+    )
+    .get(email)
+  if (!row || row.expires_at < Date.now() || row.tries >= 5) {
+    throw new HttpError(400, 'That code has expired. Tap “Send a new code”.')
+  }
+  if (row.code_hash !== sha256(code)) {
+    db.prepare('UPDATE email_codes SET tries = tries + 1 WHERE user_id = ?').run(row.id)
+    throw new HttpError(400, 'That code isn’t right. Check the email and try again.')
+  }
+  transaction(() => {
+    db.prepare('UPDATE users SET verified = 1, password_hash = ? WHERE id = ?').run(hashPassword(password), row.id)
+    db.prepare('DELETE FROM email_codes WHERE user_id = ?').run(row.id)
+  })
+  return findUser(row.id)
 }
 
 // After 10 wrong passwords for one email, that email must wait 15 minutes: stops password guessing.
 // shortcut: counted in memory (resets on restart, one server only), move to the database if you run several servers.
 const failures = new Map<string, { count: number; until: number }>()
 
-export function login({ email, password }: LoginInput) {
+export async function login({ email, password }: LoginInput) {
   const now = Date.now()
   const tries = failures.get(email)
   if (tries && tries.until > now && tries.count >= 10) {
     throw new HttpError(429, 'Too many tries. Wait 15 minutes, then try again.')
   }
-  const row: any = db.prepare(`SELECT u.password_hash, ${USER} FROM users u WHERE u.email = ?`).get(email)
+  const row: any = db.prepare(`SELECT u.password_hash, u.verified, ${USER} FROM users u WHERE u.email = ?`).get(email)
   // One message for both cases, so the login form doesn't confirm which emails exist.
   if (!row || !passwordMatches(password, row.password_hash)) {
     const current = tries && tries.until > now ? tries : { count: 0, until: now + 15 * 60_000 }
@@ -79,6 +134,11 @@ export function login({ email, password }: LoginInput) {
     throw new HttpError(401, 'Wrong email or password')
   }
   failures.delete(email)
+  // Signed up but never entered the code: send a fresh one instead of logging in.
+  if (!row.verified) {
+    await sendCode(row.id, email)
+    return { needsCode: true as const }
+  }
   return toUser(row)
 }
 

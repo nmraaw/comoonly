@@ -21,6 +21,7 @@ salted scrypt hashes. The browser holds just one secret: a session cookie that p
 erDiagram
     users ||--o{ user_interests : "picks"
     users ||--o{ sessions : "logs in with"
+    users ||--o| email_codes : "confirms email with"
     users ||--o{ connections : "asks / is asked"
     users ||--o{ groups : "hosts"
     users ||--o{ group_members : "joins / requests"
@@ -47,7 +48,15 @@ erDiagram
         text city
         text tagline
         text bio
+        int verified "0 or 1"
         int created_at
+    }
+    email_codes {
+        text user_id PK,FK
+        text code_hash "sha256"
+        int tries
+        int created_at
+        int expires_at
     }
     user_interests {
         text user_id PK,FK
@@ -179,6 +188,7 @@ friendly message; the database constraints are the last line of defence.
 | `users` | a person | they're deleted (cascades to almost everything they own) |
 | `user_interests` | one interest of one person | profile is re-saved / person deleted |
 | `sessions` | one logged-in browser | logout, expiry, person deleted |
+| `email_codes` | the 6-digit sign-up code waiting to be entered (hashed) | entered, replaced by a new one, person deleted |
 | `connections` | a request or friendship between two people | declined, blocked, person deleted |
 | `groups` | a small group (or an event's go-together group) | host deleted |
 | `group_members` | someone in, waiting for, or declined from a group | they leave / cancel |

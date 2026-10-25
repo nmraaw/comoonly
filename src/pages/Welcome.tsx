@@ -12,18 +12,77 @@ export default function Welcome() {
   const [mode, setMode] = useState<'intro' | 'signup' | 'login'>('intro')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  // After sign-up (or logging in before ever entering the code): the form's details, kept to send with the code.
+  const [pending, setPending] = useState<Record<string, FormDataEntryValue>>()
   const signup = mode === 'signup'
 
-  async function submit(form: HTMLFormElement) {
+  async function send(path: string, body: Record<string, FormDataEntryValue>) {
     setBusy(true)
     setError('')
     try {
-      const body = Object.fromEntries(new FormData(form))
-      signIn(await api<Me>(signup ? '/auth/signup' : '/auth/login', { method: 'POST', body }))
+      const result = await api<Me | { needsCode: true }>(path, { method: 'POST', body })
+      if ('needsCode' in result) setPending(body)
+      else signIn(result)
     } catch (err) {
       setError((err as Error).message)
-      setBusy(false)
     }
+    setBusy(false)
+  }
+  const submit = (form: HTMLFormElement) =>
+    send(signup ? '/auth/signup' : '/auth/login', Object.fromEntries(new FormData(form)))
+
+  if (pending) {
+    return (
+      <>
+        <header className="page-top">
+          <button className="icon-button" aria-label="Back" onClick={() => setPending(undefined)}>
+            ←
+          </button>
+          <strong>Check your email</strong>
+        </header>
+        <h1>
+          One last
+          <br />
+          step.
+        </h1>
+        <p>
+          We sent a 6-digit code to <strong>{String(pending.email)}</strong>. It can take a minute; check spam too.
+        </p>
+        <form
+          onSubmit={(e) => (
+            e.preventDefault(),
+            send('/auth/verify', { ...pending, ...Object.fromEntries(new FormData(e.currentTarget)) })
+          )}
+        >
+          <label>
+            Code
+            <input
+              name="code"
+              required
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              autoComplete="one-time-code"
+            />
+          </label>
+          {error && (
+            <p className="notice pink" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="button primary" disabled={busy}>
+            {busy ? 'One moment…' : 'Confirm →'}
+          </button>
+        </form>
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() => send(pending.name ? '/auth/signup' : '/auth/login', pending)}
+        >
+          Send a new code
+        </button>
+      </>
+    )
   }
 
   if (mode === 'intro') {

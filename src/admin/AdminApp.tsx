@@ -20,7 +20,13 @@ export default function AdminApp() {
   async function login(form: HTMLFormElement) {
     setError('')
     try {
-      setMe(await api<Me>('/auth/login', { method: 'POST', body: Object.fromEntries(new FormData(form)) }))
+      const result = await api<Me | { needsCode: true }>('/auth/login', {
+        method: 'POST',
+        body: Object.fromEntries(new FormData(form)),
+      })
+      if ('needsCode' in result)
+        setError('Confirm your email first: log in on the main app and enter the code we sent.')
+      else setMe(result)
     } catch (err) {
       setError((err as Error).message)
     }

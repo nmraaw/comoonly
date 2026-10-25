@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import type { Activity } from '../types'
@@ -7,12 +8,15 @@ import DetailHeader from '../components/DetailHeader'
 import JoinAction from '../components/JoinAction'
 import { Empty, Mascot } from '../components/UI'
 import Icon from '../components/Icon'
+import AddToCalendar, { CalendarPopup } from '../components/AddToCalendar'
+import { activityCalendar } from '../calendar'
 // Non-members get { locked: true } from the server: just enough to offer joining the group.
 type Answer = Activity | { id: string; groupId: string; locked: true }
 export default function ActivityDetail() {
   const { id } = useParams()
   const { groups } = useApp()
   const { data, error, reload } = useApi<Answer>('/activities/' + encodeURIComponent(id!))
+  const [asking, setAsking] = useState(false) // just joined: offer the calendar
   if (error) return <NotFound type="Activity" to="/groups" />
   if (!data) return <Empty>Loading…</Empty>
   const group = groups.find((g) => g.id === data.groupId)
@@ -30,6 +34,7 @@ export default function ActivityDetail() {
   async function toggle() {
     try {
       await api('/activities/' + event.id + '/going', { method: 'POST' })
+      setAsking(!event.going)
     } catch (err) {
       alert((err as Error).message)
     }
@@ -95,6 +100,8 @@ export default function ActivityDetail() {
       <button className={'button ' + (event.going ? 'lime' : 'primary')} aria-pressed={event.going} onClick={toggle}>
         {event.going ? '✓ I’m going' : 'Join activity'}
       </button>
+      {event.going && <AddToCalendar {...activityCalendar(event)} />}
+      {asking && <CalendarPopup {...activityCalendar(event)} onClose={() => setAsking(false)} />}
       <Link className="button" to={'/groups/' + group.id + '?tab=Chat'}>
         Back to group chat
       </Link>

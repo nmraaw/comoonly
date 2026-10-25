@@ -5,7 +5,8 @@ import type { CreateGroupInput, ListQuery } from './groups.schema.ts'
 
 // One query shape for list and detail, so both return exactly the frontend's GroupPreview.
 const SELECT = `
-  SELECT g.*, u.name AS owner, COUNT(m.user_id) AS members
+  SELECT g.*, u.name AS owner, COUNT(m.user_id) AS members,
+    EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id) AS forEvent
   FROM groups g
   JOIN users u ON u.id = g.owner_id
   LEFT JOIN group_members m ON m.group_id = g.id AND m.status = 'joined'`
@@ -43,6 +44,7 @@ function toPreview(row: any) {
     ownerId: row.owner_id,
     initials: initials(row.owner),
     color: row.color,
+    forEvent: Boolean(row.forEvent), // an event's "go together" group
   }
 }
 

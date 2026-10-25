@@ -15,6 +15,7 @@ export type Group = {
   ownerId: string
   initials: string
   color: string
+  forEvent: boolean // an event's "go together" group: reached from the event, not listed on Discover
 }
 
 // A person (GET /api/users/:id). `connection` is how you're linked to them:

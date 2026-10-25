@@ -53,6 +53,8 @@ test('group chat, activities and to-dos are for members only', async () => {
     locked: true,
   })
   assert.equal(await status(`/activities/${activity.id}/going`, json({}, zain)), 403)
+  assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: zain } }), 404) // members only
+  assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: hira } }), 200)
 
   const tasks = await (await fetch(`${base}/groups/tiny-game/tasks`, json({ title: 'Pick a mechanic' }, hira))).json()
   const toggled = await (await fetch(`${base}/tasks/${tasks[0].id}/toggle`, json({}, hira))).json()
@@ -110,8 +112,14 @@ test('admins publish events; anyone can find people to go with', async () => {
   const first = await (await fetch(`${base}/events/${listed.id}/go`, json({}, hira))).json()
   const second = await (await fetch(`${base}/events/${listed.id}/go`, json({}, zain))).json()
   assert.equal(first.groupId, second.groupId) // one group per event
+  assert.equal((await get(`/groups/${first.groupId}`)).forEvent, true) // kept off Discover
   assert.equal((await get('/events', hira))[0].goingCount, 2)
   assert.equal(await status(`/groups/${first.groupId}/messages`, { headers: { cookie: zain } }), 200) // Zain is in
+
+  // "Add to calendar": 09:00 Pakistan time is 04:00 UTC.
+  const ics = await (await fetch(`${base}/events/${listed.id}/calendar.ics`, { headers: { cookie: zain } })).text()
+  assert.match(ics, /DTSTART:20300201T040000Z\r\n/)
+  assert.match(ics, /SUMMARY:Karachi Code Jam\r\nLOCATION:Karachi\r\n/)
 
   // A one-field edit must only change that field (regression: defaults used to wipe city and category).
   const edited = await (

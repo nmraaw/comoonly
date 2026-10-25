@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFeedWheel } from '../hooks/useFeedWheel'
 import GroupCard from '../components/GroupCard'
+import EventCard from '../components/EventCard'
+import { useApi } from '../api'
+import type { EventItem } from '../types'
 import { Chips, Empty, Logo, Mascot, Modal } from '../components/UI'
 import Icon from '../components/Icon'
 import { useApp } from '../state/AppContext'
@@ -15,10 +18,21 @@ export default function Discover() {
   const [filters, setFilters] = useState(false)
   const visible = groups.filter(
     (g) =>
+      !g.forEvent &&
       (place === 'Anywhere' || g.location.toLowerCase() === place.toLowerCase()) &&
       (category === 'For you' || g.category === category) &&
       (!savedOnly || saved.includes(g.id)) &&
       (g.title + ' ' + g.description + ' ' + g.category).toLowerCase().includes(search.toLowerCase()),
+  )
+  // Published events sit at the top of the feed. Checked every minute, so one an admin just
+  // published shows up without anyone reloading.
+  const events = (useApi<EventItem[]>('/events', 60_000).data ?? []).filter(
+    (e) =>
+      category === 'For you' &&
+      !savedOnly &&
+      (place === 'Anywhere' ||
+        (place === 'Online' ? e.mode !== 'In person' : e.city.toLowerCase() === place.toLowerCase())) &&
+      (e.title + ' ' + e.description + ' ' + e.category).toLowerCase().includes(search.toLowerCase()),
   )
   const feed = useFeedWheel()
   return (
@@ -93,11 +107,14 @@ export default function Discover() {
         )}
       </div>
       <div className="discover-feed" ref={feed} aria-label="Discover group feed" tabIndex={0}>
-        {visible.length ? (
+        {events.map((e) => (
+          <EventCard key={e.id} event={e} />
+        ))}
+        {visible.length || events.length ? (
           visible.map((g) => <GroupCard key={g.id} group={g} />)
         ) : (
           <Empty>
-            No groups found. Try another search or filter.
+            Nothing found. Try another search or filter.
             <button
               className="button"
               onClick={() => {

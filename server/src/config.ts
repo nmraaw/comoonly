@@ -13,6 +13,11 @@ export const config = {
   sessionDays: 14,
   // People with these emails can review events found by the event finder, e.g. ADMIN_EMAILS=you@mail.com
   adminEmails: list(process.env.ADMIN_EMAILS),
+  // The Gmail that sends sign-up codes. Empty = codes are printed in the server log instead.
+  email: {
+    user: process.env.EMAIL_USER ?? '',
+    pass: process.env.EMAIL_APP_PASSWORD ?? '',
+  },
   // The AI that reads event posts and pages without structured data. Any OpenAI-compatible endpoint works:
   // Google Gemini's free tier is the default in .env.example; Groq or Ollama also work. Empty = AI off.
   ai: {

@@ -1,20 +1,27 @@
 import { Router } from 'express'
 import { clearSessionCookie, requireAuth, setSessionCookie } from '../../middleware/auth.ts'
-import { deleteAccountSchema, loginSchema, signupSchema } from './auth.schema.ts'
-import { createSession, deleteAccount, endSession, login, signup } from './auth.service.ts'
+import { deleteAccountSchema, loginSchema, signupSchema, verifySchema } from './auth.schema.ts'
+import { createSession, deleteAccount, endSession, login, signup, verify } from './auth.service.ts'
 
 export const authRoutes = Router()
 
-authRoutes.post('/signup', (req, res) => {
-  const user = signup(signupSchema.parse(req.body))
+// Answers { needsCode: true }: the app then asks for the code that was just emailed.
+authRoutes.post('/signup', async (req, res) => {
+  res.status(202).json(await signup(signupSchema.parse(req.body)))
+})
+
+authRoutes.post('/verify', (req, res) => {
+  const user = verify(verifySchema.parse(req.body))
   setSessionCookie(res, createSession(user.id))
   res.status(201).json(user)
 })
 
-authRoutes.post('/login', (req, res) => {
-  const user = login(loginSchema.parse(req.body))
-  setSessionCookie(res, createSession(user.id))
-  res.json(user)
+// A logged-in user, or { needsCode: true } for someone who never entered their sign-up code.
+authRoutes.post('/login', async (req, res) => {
+  const result = await login(loginSchema.parse(req.body))
+  if ('needsCode' in result) return res.status(202).json(result)
+  setSessionCookie(res, createSession(result.id))
+  res.json(result)
 })
 
 authRoutes.post('/logout', (req: any, res) => {

@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { base, get, json, loginAs, status } from './helpers.ts'
+import { outbox } from '../src/email.ts'
 
 test('feed returns seeded groups in the frontend shape, with filters and sorting', async () => {
   const all = await get('/groups')
@@ -19,6 +20,7 @@ test('feed returns seeded groups in the frontend shape, with filters and sorting
     ownerId: 'areeba',
     initials: 'AR',
     color: 'lilac',
+    forEvent: false,
   })
   const creative = await get('/groups?category=Creative&location=Sialkot')
   assert.deepEqual(
@@ -42,16 +44,30 @@ test('signup, create a group, logout, delete account', async () => {
   }
   assert.equal(await status('/groups', json(group)), 401) // must log in first
 
+  // Sign-up only emails a code. Someone else signing up with the same email before it's verified
+  // doesn't lock the owner out: the code goes to the owner's inbox, and their password wins.
+  assert.equal(await status('/auth/signup', json({ name: 'X', email: 'ali@example.com', password: 'squatter1' })), 202)
   const signup = await fetch(
     `${base}/auth/signup`,
     json({ name: 'Ali K.', email: 'Ali@Example.com', password: 'longenough' }),
   )
-  assert.equal(signup.status, 201)
-  const user = await signup.json()
+  assert.equal(signup.status, 202)
+  assert.equal(signup.headers.get('set-cookie'), null) // not logged in yet
+  assert.equal(await status('/auth/login', json({ email: 'ali@example.com', password: 'longenough' })), 202) // still needs the code
+  const code = outbox.findLast((m) => m.to === 'ali@example.com')!.text.match(/\d{6}/)![0]
+  assert.equal(outbox.filter((m) => m.to === 'ali@example.com').length, 1) // one email a minute at most
+  const verify = (c: string) =>
+    fetch(`${base}/auth/verify`, json({ email: 'ali@example.com', password: 'longenough', code: c }))
+  assert.equal((await verify(code === '000000' ? '111111' : '000000')).status, 400)
+  const verified = await verify(code)
+  assert.equal(verified.status, 201)
+  const user = await verified.json()
   assert.equal(user.password_hash, undefined) // the stored hash must never leave the server
-  const cookie = signup.headers.get('set-cookie')!.split(';')[0]
+  const cookie = verified.headers.get('set-cookie')!.split(';')[0]
   assert.equal((await get('/auth/me', cookie)).email, 'ali@example.com')
+  assert.equal((await verify(code)).status, 400) // a code works once
   assert.equal(await status('/auth/signup', json({ name: 'X', email: 'ali@example.com', password: 'longenough' })), 409)
+  assert.equal(await status('/auth/login', json({ email: 'ali@example.com', password: 'squatter1' })), 401)
 
   const created = await (await fetch(`${base}/groups`, json(group, cookie))).json()
   assert.deepEqual([created.owner, created.members, created.spots], ['Ali K.', 1, 3])

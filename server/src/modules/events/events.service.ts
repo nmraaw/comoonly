@@ -121,7 +121,7 @@ export function tidyEvents() {
   return { drafts, rejected }
 }
 
-function getEvent(id: string): any {
+export function getEvent(id: string): any {
   const event = db.prepare(`${SELECT} WHERE e.id = ?`).get(id)
   if (!event) throw new HttpError(404, 'Event not found')
   return event

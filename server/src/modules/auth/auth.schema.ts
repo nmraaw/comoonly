@@ -15,6 +15,14 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(100),
 })
 
+// The 6-digit code from the sign-up email. The password comes along again (see auth.service verify).
+export const verifySchema = loginSchema.extend({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'The code is 6 digits'),
+})
+
 // Deleting your account asks for your password again, so nobody can do it from a borrowed phone.
 export const deleteAccountSchema = z.object({
   password: z.string().min(1, 'Enter your password').max(100),
@@ -22,3 +30,4 @@ export const deleteAccountSchema = z.object({
 
 export type SignupInput = z.infer<typeof signupSchema>
 export type LoginInput = z.infer<typeof loginSchema>
+export type VerifyInput = z.infer<typeof verifySchema>

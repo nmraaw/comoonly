@@ -167,7 +167,7 @@ export function seedIfEmpty() {
   const now = Date.now()
   transaction(() => {
     const addUser = db.prepare(
-      'INSERT INTO users (id, name, email, password_hash, city, tagline, bio, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (id, name, email, password_hash, city, tagline, bio, verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)',
     )
     const addInterest = db.prepare('INSERT INTO user_interests (user_id, interest, position) VALUES (?, ?, ?)')
     for (const u of users) {
