@@ -120,7 +120,8 @@ function announce(event: any) {
   const ids = users
     .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => interested(i, event)))
     .map((u) => u.id)
-  if (ids.length) notify(ids, 'update', `New ${event.category.toLowerCase()} you might like: ${event.title}`, `/events/${event.id}`)
+  if (ids.length)
+    notify(ids, 'update', `New ${event.category.toLowerCase()} you might like: ${event.title}`, `/events/${event.id}`)
 }
 
 // Public feed: published, not over yet, and registration still open.
