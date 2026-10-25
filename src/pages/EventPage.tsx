@@ -81,8 +81,8 @@ export default function EventPage() {
             <h2 className="section-title">Go together</h2>
             <div className="notice info-rows">
               <p>
-                <strong>💬 Everyone going</strong> · one big group chat for everyone from Comoonly at this event. Say
-                hi, ask questions, find people.
+                <strong>💬 General chat</strong> · one big group chat for everyone from Comoonly at this event. Say hi,
+                ask questions, find people.
               </p>
               {intent && intent.value !== 'friends' && e.groupId ? (
                 <Link className="button primary" to={'/groups/' + e.groupId + '?tab=Chat'}>

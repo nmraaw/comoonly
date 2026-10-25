@@ -59,7 +59,7 @@ export default function Groups() {
               <h2>{g.eventTitle}</h2>
               {!g.crewFor && (
                 <Link className="event-row" to={'/groups/' + g.id + '?tab=Chat'}>
-                  💬 <strong>Everyone going</strong> · {people(g.members)} →
+                  💬 <strong>General chat</strong> · {people(g.members)} →
                 </Link>
               )}
               {crews.map((c) => (

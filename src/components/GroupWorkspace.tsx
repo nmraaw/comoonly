@@ -36,7 +36,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
       members,
     )
   if (!group) return <Empty>Group not found.</Empty>
-  const kind = group.crewFor ? 'your crew' : group.forEvent ? 'everyone going' : 'your group'
+  const kind = group.crewFor ? 'your crew' : group.forEvent ? 'general chat' : 'your group'
   return (
     <>
       <DetailHeader title={group.name} fallback="/groups" />
