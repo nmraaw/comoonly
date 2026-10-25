@@ -7,8 +7,19 @@ const list = (value = '') =>
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),
+  // Turso (hosted SQLite, for Render): with these set, writes go to Turso and a local copy serves reads.
+  // Empty = the local file below, as always. See docs/DEPLOY_RENDER_TURSO.md.
+  turso: {
+    url: process.env.TURSO_DATABASE_URL ?? '',
+    token: process.env.TURSO_AUTH_TOKEN ?? '',
+  },
+  // Which SQLite library: Node's built-in (default) or Turso's 'libsql' (always used with Turso; set
+  // DB_DRIVER=libsql to try it on a local file, as `npm run test:libsql` does).
+  dbDriver: process.env.TURSO_DATABASE_URL ? 'libsql' : (process.env.DB_DRIVER ?? 'sqlite'),
   // Relative to where you run `npm run server` (the project root). ':memory:' is used by tests.
-  dbPath: process.env.DB_PATH ?? 'server/data/comoonly.db',
+  // With Turso it's only the local copy, kept apart so it can never be mistaken for the real local database.
+  dbPath:
+    process.env.DB_PATH ?? (process.env.TURSO_DATABASE_URL ? 'server/data/turso-copy.db' : 'server/data/comoonly.db'),
   isProd: process.env.NODE_ENV === 'production',
   sessionDays: 14,
   // People with these emails can review events found by the event finder, e.g. ADMIN_EMAILS=you@mail.com

@@ -3,6 +3,7 @@ import { api, useApi } from '../api'
 import type { Me } from '../types'
 import { Chips, Empty } from '../components/UI'
 type Overview = {
+  canBackup: boolean
   totals: {
     people: number
     newThisWeek: number
@@ -102,9 +103,11 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
         </button>
       )}
       {/* A full copy of the database: keep it somewhere private, it holds everyone's data. */}
-      <a className="button" href="/api/admin/backup" download>
-        Download a backup
-      </a>
+      {data?.canBackup && (
+        <a className="button" href="/api/admin/backup" download>
+          Download a backup
+        </a>
+      )}
       <Chips label="Dashboard section" values={['People', 'Events', 'Reports']} value={tab} onChange={setTab} />
       {tab !== 'Reports' && (
         <label className="search">

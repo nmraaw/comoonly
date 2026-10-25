@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { db } from '../../db/connection.ts'
+import { db, usingTurso } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 
 const count = (sql: string, ...params: number[]) => (db.prepare(sql).get(...params) as any).n as number
@@ -11,6 +11,7 @@ const count = (sql: string, ...params: number[]) => (db.prepare(sql).get(...para
 export function overview() {
   const weekAgo = Date.now() - 7 * 86_400_000
   return {
+    canBackup: !usingTurso, // on Render the data is in Turso: back up with Turso's own export instead
     totals: {
       people: count('SELECT COUNT(*) AS n FROM users'),
       newThisWeek: count('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', weekAgo),
@@ -58,6 +59,7 @@ export function resolveReport(id: string) {
 // A complete, consistent copy of the database as one file (SQLite's VACUUM INTO), for the dashboard's
 // "Download a backup" button. It holds everyone's data, so only admins can get it (see admin.routes.ts).
 export function backupFile() {
+  if (usingTurso) throw new HttpError(501, 'The data is in Turso here: back up with `turso db shell comoonly .dump`')
   const file = join(mkdtempSync(join(tmpdir(), 'comoonly-')), `comoonly-${new Date().toISOString().slice(0, 10)}.db`)
   db.prepare('VACUUM INTO ?').run(file)
   return file

@@ -1,0 +1,36 @@
+# Render Blueprint: one free web service runs the whole app (website + API).
+# The data lives in Turso (see docs/DEPLOY_RENDER_TURSO.md); Render's own disk is only a temporary copy.
+# No secrets here: every `sync: false` value is typed into Render's dashboard when the Blueprint is created.
+services:
+  - type: web
+    name: comoonly
+    runtime: node
+    plan: free
+    region: frankfurt # pick the Turso database region closest to this
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: false # updates go live only when you click Deploy, never by surprise during judging
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: AI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: AI_MODEL
+        value: gemini-flash-lite-latest
+      - key: AI_API_KEY
+        sync: false
+      - key: INSTAGRAM_TOKEN
+        sync: false
+      - key: INSTAGRAM_USER_ID
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_APP_PASSWORD
+        sync: false
