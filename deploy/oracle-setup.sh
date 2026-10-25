@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Sets up Comoonly on a fresh Oracle Cloud "Always Free" Ubuntu server, in one go:
-# Node.js 24, the app (from GitHub), a service that keeps it running (and restarts it after a reboot),
+# Node.js 24, the app (copied from your Mac, or fetched from GitHub), a service that keeps it running (and restarts it after a reboot),
 # and Tailscale Funnel for a free, permanent https address. Safe to run again to update the app.
 #
 # Usage, on the server:   bash oracle-setup.sh   (or add a GitHub address to fetch the code from there)
-# Before running it, copy your .env to the server (see docs/RUNNING.md, "Oracle Cloud").
+# Before running it, copy the app and your .env (private keys) to ~/comoonly on the server.
 set -euo pipefail
 
 REPO="${1:-}" # optional: leave out when the code was copied straight to ~/comoonly from your Mac
