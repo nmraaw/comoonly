@@ -2,11 +2,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readdirSync } from 'node:fs'
 import './helpers.ts' // fresh in-memory database with sample data
-import { db, migrate, transaction } from '../src/db/connection.ts'
+import { db, migrate, transaction, usingTurso } from '../src/db/connection.ts'
 import { config } from '../src/config.ts'
 
 // Every test here also runs through Turso's library (`npm run test:libsql`), so the app's database code is
-// checked against both. Run with Turso settings (see docs/DEPLOY_RENDER_TURSO.md) to check a real Turso database.
+// checked against both. `npm run test:turso` runs this file against a real, empty, throwaway Turso database
+// (its settings in .env.turso-check.local; see docs/DEPLOY_RENDER_TURSO.md).
 const count = (sql: string, ...params: string[]) => (db.prepare(sql).get(...params) as { n: number }).n
 const version = () => (db.prepare('SELECT version FROM _schema_version').get() as { version: number }).version
 const latest = Math.max(...readdirSync(new URL('../src/db/migrations/', import.meta.url)).map((f) => parseInt(f, 10)))
@@ -40,7 +41,8 @@ test('migrations: a fresh database gets every one, once; an old database is pick
   assert.equal(count('SELECT COUNT(*) AS n FROM _schema_version'), 1)
 
   // A database from before `_schema_version` (only SQLite's built-in number) starts the table from that number,
-  // without re-running anything (re-running 001 would fail: its tables exist).
+  // without re-running anything (re-running 001 would fail: its tables exist). Turso can't set that number.
+  if (usingTurso) return
   db.exec('DELETE FROM _schema_version')
   db.exec(`PRAGMA user_version = ${latest}`)
   migrate()

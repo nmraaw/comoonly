@@ -1,8 +1,14 @@
 import { after } from 'node:test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 // Each test file runs in its own process with a fresh in-memory database full of sample data.
 // These must be set before the app (and its config/db) is imported.
-process.env.DB_PATH = ':memory:'
+// Against Turso (`npm run test:turso`) the local copy must be a file: a fresh temporary one.
+process.env.DB_PATH = process.env.TURSO_DATABASE_URL
+  ? join(mkdtempSync(join(tmpdir(), 'comoonly-turso-')), 'copy.db')
+  : ':memory:'
 process.env.ADMIN_EMAILS = 'sara@comoonly.test'
 const { app } = await import('../src/app.ts')
 const { seedIfEmpty } = await import('../src/db/seed.ts')

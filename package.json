@@ -16,7 +16,8 @@
     "start": "NODE_ENV=production node --env-file-if-exists=.env server/src/index.ts",
     "live": "npm run build && caffeinate -is npm start",
     "test": "node --test \"server/test/*.test.ts\"",
-    "test:libsql": "DB_DRIVER=libsql node --test \"server/test/*.test.ts\""
+    "test:libsql": "DB_DRIVER=libsql node --test \"server/test/*.test.ts\"",
+    "test:turso": "node --env-file=.env.turso-check.local --test server/test/database.test.ts"
   },
   "dependencies": {
     "express": "^5.3.0",

@@ -24,3 +24,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Turso test runs: never commit local database copies
+/:memory:*
