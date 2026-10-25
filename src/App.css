@@ -997,3 +997,65 @@ a.notice {
   color: var(--ink);
   text-decoration: none;
 }
+
+/* Discover's top stays small (logo row, one heading line with the mascot, search with the filter
+   button inside) so the feed gets most of the screen. Location and interests are in the filter popup. */
+.discover-page .discover-header {
+  margin-bottom: 2px;
+  min-height: 0;
+}
+.discover-page .brand-logo {
+  height: 24px;
+}
+.discover-page .header-actions {
+  gap: 6px;
+}
+.discover-page .header-actions .icon-button {
+  width: 36px;
+  height: 36px;
+}
+.discover-page .discover-hero {
+  gap: 8px;
+  align-items: center;
+}
+.discover-page .discover-hero h1 {
+  font-size: 21px;
+  line-height: 1.1;
+}
+.discover-page .discover-hero .mascot {
+  width: 44px;
+  flex: none;
+}
+.discover-page .search {
+  flex: none;
+  margin: 4px 0 8px;
+  border-radius: 18px;
+  padding: 0 6px 0 14px;
+}
+.discover-page .search input {
+  padding: 10px 0;
+}
+.filter-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.discover-page .filter-line {
+  margin: 0 0 6px;
+}
+.filter-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--lime);
+  border: 2px solid var(--ink);
+}

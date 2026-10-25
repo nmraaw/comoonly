@@ -35,6 +35,17 @@ export default function Discover() {
       (e.title + ' ' + e.description + ' ' + e.category).toLowerCase().includes(search.toLowerCase()),
   )
   const feed = useFeedWheel()
+  // Filters live behind the filter button; a short line says which ones are on.
+  const active = [place !== 'Anywhere' && place, category !== 'For you' && category, savedOnly && 'Saved'].filter(
+    Boolean,
+  )
+  const clear = () => {
+    setSearch('')
+    setPlace('Anywhere')
+    setCategory('For you')
+    setSavedOnly(false)
+  }
+  // The top stays small (logo row, one heading line with the mascot, search) so the feed gets the screen.
   return (
     <div className="discover-page">
       <div className="discover-fixed">
@@ -64,45 +75,25 @@ export default function Discover() {
           </div>
         </header>
         <div className="discover-hero">
-          <h1>
-            Find your
-            <br />
-            kind of
-            <br />
-            people.
-          </h1>
+          <h1>Find your kind of people.</h1>
           <Mascot name="note" />
         </div>
-        <p className="tagline">
-          Small groups. Actual plans.{' '}
-          <Link className="text-button" to="/events">
-            Events →
-          </Link>
-        </p>
-        <div className="search-row">
-          <label className="search">
-            <Icon name="search" />
-            <input
-              aria-label="Search groups"
-              placeholder="What do you want to do?"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
-          <button className="icon-button" aria-label="More filters" onClick={() => setFilters(true)}>
+        <div className="search">
+          <Icon name="search" />
+          <input
+            aria-label="Search events and groups"
+            placeholder="What do you want to do?"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="filter-button" aria-label="Filters" onClick={() => setFilters(true)}>
             <Icon name="filter" />
+            {active.length > 0 && <span className="filter-dot" aria-label="filters on" />}
           </button>
         </div>
-        <Chips label="Location" values={places} value={place} onChange={setPlace} />
-        <Chips
-          label="Interest"
-          values={['For you', 'Music', 'Creative', 'Tech']}
-          value={category}
-          onChange={setCategory}
-        />
-        {savedOnly && (
-          <button className="text-button" onClick={() => setSavedOnly(false)}>
-            Saved groups · Clear ×
+        {active.length > 0 && (
+          <button className="text-button filter-line" onClick={clear}>
+            {active.join(' · ')} · Clear ×
           </button>
         )}
       </div>
@@ -115,15 +106,7 @@ export default function Discover() {
         ) : (
           <Empty>
             Nothing found. Try another search or filter.
-            <button
-              className="button"
-              onClick={() => {
-                setSearch('')
-                setPlace('Anywhere')
-                setCategory('For you')
-                setSavedOnly(false)
-              }}
-            >
+            <button className="button" onClick={clear}>
               Clear filters
             </button>
           </Empty>
@@ -131,8 +114,9 @@ export default function Discover() {
       </div>
       {filters && (
         <Modal title="Find your people" onClose={() => setFilters(false)}>
+          <Chips label="Where" values={places} value={place} onChange={setPlace} />
           <Chips
-            label="All interests"
+            label="Interests"
             values={['For you', 'Music', 'Creative', 'Tech', 'Film', 'Reading']}
             value={category}
             onChange={setCategory}
@@ -142,7 +126,7 @@ export default function Discover() {
             only
           </label>
           <button className="button primary" onClick={() => setFilters(false)}>
-            Show groups
+            Show results
           </button>
         </Modal>
       )}
