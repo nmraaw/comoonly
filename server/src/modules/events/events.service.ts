@@ -9,7 +9,8 @@ import type { EventInput, EventPatch } from './events.schema.ts'
 const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description,
     e.register_url AS registerUrl, e.source_url AS sourceUrl, e.status, e.group_id AS groupId,
     (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy,
-    (SELECT COUNT(*) FROM group_members m WHERE m.group_id = e.group_id AND m.status = 'joined') AS goingCount
+    (SELECT COUNT(*) FROM group_members m WHERE m.group_id = e.group_id AND m.status = 'joined') AS goingCount,
+    EXISTS (SELECT 1 FROM event_posters p WHERE p.event_id = e.id) AS hasPoster
   FROM events e`
 
 // Dates are ISO text (2026-11-02 or 2026-11-02T18:00), so comparing them as text works.
@@ -76,7 +77,29 @@ export function saveEvent(
       input.date,
     )
   if (result.changes && status === 'published') announce(getEvent(id))
-  return result.changes > 0
+  return result.changes > 0 && id // the new event's id, or false for a duplicate
+}
+
+// shortcut: posters live in the database as bytes (a few hundred KB each), move them to file storage
+// (e.g. Cloudflare R2) if there are thousands.
+export function savePoster(eventId: string, dataUrl: string) {
+  const [, mime, base64] = dataUrl.match(/^data:([^;]+);base64,(.+)$/)!
+  db.prepare(
+    `INSERT INTO event_posters (event_id, mime, bytes) VALUES (?, ?, ?)
+     ON CONFLICT (event_id) DO UPDATE SET mime = excluded.mime, bytes = excluded.bytes`,
+  ).run(eventId, mime, Buffer.from(base64, 'base64'))
+}
+
+export function getPoster(eventId: string) {
+  return db.prepare('SELECT mime, bytes FROM event_posters WHERE event_id = ?').get(eventId) as
+    { mime: string; bytes: Uint8Array } | undefined
+}
+
+// The event an event group was made for, shown at the top of that group.
+export function eventForGroup(groupId: string) {
+  const event = db.prepare(`${SELECT} WHERE e.group_id = ? AND e.status = 'published'`).get(groupId)
+  if (!event) throw new HttpError(404, 'Event not found')
+  return event
 }
 
 // "Hackathons" in someone's interests matches a Hackathon; "Music" matches an event mentioning music.
@@ -109,16 +132,30 @@ export function listDrafts() {
   return db.prepare(`${SELECT} WHERE e.status = 'draft' AND ${STILL_ON} ORDER BY e.starts_at`).all(today(), today())
 }
 
-// Runs daily: drafts nobody reviewed before the event (or deadline) are deleted, rejected events after 30 days,
-// and the list of already-read Instagram posts after 30 days. Published events stay, as history.
+// Runs every 12 hours: drafts nobody reviewed before the event (or deadline) are deleted, rejected events
+// after 30 days, published events (and their groups) 7 days after the event, and the list of
+// already-read Instagram posts after 30 days. Published events leave the Events page once registration closes.
 export function tidyEvents() {
   const monthAgo = Date.now() - 30 * 86_400_000
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)
   const drafts = db
     .prepare(`DELETE FROM events AS e WHERE status = 'draft' AND NOT (${STILL_ON})`)
     .run(today(), today()).changes
   const rejected = db.prepare("DELETE FROM events WHERE status = 'rejected' AND created_at < ?").run(monthAgo).changes
+  const over = db.prepare("SELECT id FROM events WHERE status = 'published' AND starts_at < ?").all(weekAgo)
+  for (const e of over as { id: string }[]) deleteEvent(e.id)
   db.prepare('DELETE FROM seen_posts WHERE seen_at < ?').run(monthAgo)
-  return { drafts, rejected }
+  return { drafts, rejected, finished: over.length }
+}
+
+// An event goes with its "go together" group: the group only made sense for this event.
+export function deleteEvent(id: string) {
+  transaction(() => {
+    const row: any = db.prepare('SELECT group_id FROM events WHERE id = ?').get(id)
+    if (!row) throw new HttpError(404, 'Event not found')
+    db.prepare('DELETE FROM events WHERE id = ?').run(id)
+    if (row.group_id) db.prepare('DELETE FROM groups WHERE id = ?').run(row.group_id)
+  })
 }
 
 export function getEvent(id: string): any {

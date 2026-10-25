@@ -49,30 +49,3 @@ export function toggleGoing(activityId: string, userId: string) {
   if (!removed.changes) db.prepare('INSERT INTO rsvps (activity_id, user_id) VALUES (?, ?)').run(activityId, userId)
   return getActivity(activityId, userId)
 }
-
-export function listTasks(groupId: string, userId: string) {
-  requireMember(groupId, userId)
-  return db
-    .prepare('SELECT id, title, done FROM tasks WHERE group_id = ? ORDER BY created_at')
-    .all(groupId)
-    .map((t: any) => ({ ...t, done: Boolean(t.done) }))
-}
-
-export function addTask(groupId: string, userId: string, title: string) {
-  requireMember(groupId, userId)
-  db.prepare('INSERT INTO tasks (id, group_id, title, created_at) VALUES (?, ?, ?, ?)').run(
-    randomUUID(),
-    groupId,
-    title,
-    Date.now(),
-  )
-  return listTasks(groupId, userId)
-}
-
-export function toggleTask(taskId: string, userId: string) {
-  const task: any = db.prepare('SELECT group_id FROM tasks WHERE id = ?').get(taskId)
-  if (!task) throw new HttpError(404, 'Task not found')
-  requireMember(task.group_id, userId)
-  db.prepare('UPDATE tasks SET done = 1 - done WHERE id = ?').run(taskId)
-  return listTasks(task.group_id, userId)
-}

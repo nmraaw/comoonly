@@ -7,10 +7,8 @@ import NotFound from '../components/NotFound'
 import DetailHeader from '../components/DetailHeader'
 
 type Person = { id: string; name: string; city: string }
-type Conversations = {
-  groups: { id: string; name: string; color: string; last: string | null }[]
-  people: { id: string; name: string; last: string | null }[]
-}
+// Private chats only; group chats live inside each group.
+type Conversations = { people: { id: string; name: string; last: string | null }[] }
 
 // A private chat with one connection (/messages?chat=<userId>).
 function PrivateChat({ id }: { id: string }) {
@@ -39,7 +37,7 @@ function PrivateChat({ id }: { id: string }) {
 
 export default function Messages() {
   const [params, setParams] = useSearchParams()
-  const tab = ['All', 'Groups', 'Requests'].includes(params.get('view') || '') ? params.get('view')! : 'All'
+  const tab = params.get('view') === 'Requests' ? 'Requests' : 'Chats'
   const chat = params.get('chat')
   const list = useApi<Conversations>(chat ? null : '/messages')
   const connections = useApi<{ incoming: Person[]; outgoing: Person[] }>(chat ? null : '/connections')
@@ -63,7 +61,7 @@ export default function Messages() {
       <h1>Your conversations</h1>
       <Chips
         label="Conversation filter"
-        values={['All', 'Groups', 'Requests']}
+        values={['Chats', 'Requests']}
         value={tab}
         onChange={(view) => setParams({ view })}
       />
@@ -98,33 +96,24 @@ export default function Messages() {
         </>
       ) : (
         <div className="stack">
-          {tab === 'All' &&
-            list.data?.people.map((p) => (
-              <Link className="conversation lilac person-chat" key={p.id} to={'?chat=' + p.id}>
-                <Mascot seed={p.id} />
-                <div>
-                  <h2>{p.name}</h2>
-                  <p>{p.last || 'Accepted connection · say hello'}</p>
-                </div>
-              </Link>
-            ))}
-          {list.data?.groups.map((g) => (
-            <Link key={g.id} className={'conversation ' + g.color} to={'/groups/' + g.id + '?tab=Chat'}>
+          {list.data?.people.map((p) => (
+            <Link className="conversation lilac person-chat" key={p.id} to={'?chat=' + p.id}>
+              <Mascot seed={p.id} />
               <div>
-                <h2>{g.name}</h2>
-                <p>{g.last || 'Your group is ready.'} · Group chat →</p>
+                <h2>{p.name}</h2>
+                <p>{p.last || 'Accepted connection · say hello'}</p>
               </div>
             </Link>
           ))}
-          {list.data && !list.data.groups.length && !(tab === 'All' && list.data.people.length) && (
+          {list.data && !list.data.people.length && (
             <Empty>
-              No conversations yet.
-              <Link className="button" to="/">
-                Find a group →
+              No private chats yet. Meet people in a group, connect from their profile, then say hello here.
+              <Link className="button" to="/groups">
+                Your groups →
               </Link>
             </Empty>
           )}
-          {tab === 'All' && incoming.length > 0 && (
+          {incoming.length > 0 && (
             <button className="conversation" onClick={() => setParams({ view: 'Requests' })}>
               <div>
                 <h2>Message requests</h2>

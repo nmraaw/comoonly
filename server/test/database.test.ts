@@ -7,7 +7,7 @@ import { db } from '../src/db/connection.ts'
 test('the database itself rejects invalid data', () => {
   const rejects = (sql: string, ...params: (string | number)[]) => assert.throws(() => db.prepare(sql).run(...params))
 
-  assert.equal((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 2) // migrations 001 and 002 applied
+  assert.equal((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4) // every migration applied
 
   // One connection per pair, whichever way round it was asked; nobody connects with themselves.
   db.prepare("INSERT INTO connections (from_id, to_id, created_at) VALUES ('hira', 'zain', 0)").run()

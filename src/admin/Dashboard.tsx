@@ -48,6 +48,17 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
     }
     reload()
   }
+  // A cancelled or wrong event. Its go-together group goes too (finished events also clear themselves).
+  async function deleteEvent(e: Overview['events'][number]) {
+    const going = e.going ? ` Its group and chat (${e.going} ${e.going === 1 ? 'person' : 'people'}) go too.` : ''
+    if (!confirm(`Delete “${e.title}” for everyone?${going} This can’t be undone.`)) return
+    try {
+      await api('/events/' + e.id, { method: 'DELETE' })
+    } catch (err) {
+      alert((err as Error).message)
+    }
+    reload()
+  }
   // For data-deletion requests sent to the contact email on the privacy page.
   async function deletePerson(id: string, name: string) {
     if (!confirm(`Delete ${name}'s account and all their data? This can't be undone.`)) return
@@ -130,15 +141,20 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
           data?.events
             .filter((e) => (e.title + ' ' + e.city + ' ' + e.status).toLowerCase().includes(q))
             .map((e) => (
-              <a className="member-row" key={e.id} href={e.registerUrl} target="_blank" rel="noopener noreferrer">
-                <span>
-                  <strong>{e.title}</strong>
-                  <small>
-                    {e.status} · {day(e.date)}
-                    {e.city ? ' · ' + e.city : ''} · {e.going} going together
-                  </small>
-                </span>
-              </a>
+              <div className="member-row" key={e.id}>
+                <a href={e.registerUrl} target="_blank" rel="noopener noreferrer">
+                  <span>
+                    <strong>{e.title}</strong>
+                    <small>
+                      {e.status} · {day(e.date)}
+                      {e.city ? ' · ' + e.city : ''} · {e.going} going together
+                    </small>
+                  </span>
+                </a>
+                <button className="text-button" onClick={() => deleteEvent(e)}>
+                  Delete
+                </button>
+              </div>
             ))}
         {tab === 'Reports' && (
           <>

@@ -1,8 +1,19 @@
 import { Router } from 'express'
 import { requireAdmin, requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { eventPatchSchema, eventSchema, suggestSchema } from './events.schema.ts'
-import { getEvent, goWith, listDrafts, listPublished, saveEvent, updateEvent } from './events.service.ts'
+import { eventPatchSchema, eventSchema, posterSchema, suggestSchema } from './events.schema.ts'
+import {
+  deleteEvent,
+  eventForGroup,
+  getEvent,
+  getPoster,
+  goWith,
+  listDrafts,
+  savePoster,
+  listPublished,
+  saveEvent,
+  updateEvent,
+} from './events.service.ts'
 import { eventsFromPost } from './events.ai.ts'
 import { scanSources } from './events.finder.ts'
 import { sendIcs } from '../../calendar.ts'
@@ -17,6 +28,17 @@ eventRoutes.get('/', requireAuth, (_req, res) => {
 // "Find people to go with" → the event's group id, to open it.
 eventRoutes.post('/:id/go', requireAuth, (req: any, res) => {
   res.json({ groupId: goWith(req.params.id, req.user.id) })
+})
+
+// The event an event group is for (its "Event" tab).
+eventRoutes.get('/for-group/:groupId', requireAuth, (req, res) => {
+  res.json(eventForGroup(req.params.groupId as string))
+})
+
+eventRoutes.get('/:id/poster', requireAuth, (req, res) => {
+  const poster = getPoster(req.params.id as string)
+  if (!poster) throw new HttpError(404, 'No poster')
+  res.type(poster.mime).set('cache-control', 'private, max-age=86400').send(Buffer.from(poster.bytes))
 })
 
 // "Add to calendar" (Apple, Outlook, phones).
@@ -54,8 +76,22 @@ eventRoutes.post('/scan', requireAuth, requireAdmin, async (_req, res) => {
 // An admin adding an event by hand publishes it straight away.
 eventRoutes.post('/', requireAuth, requireAdmin, (req, res) => {
   const event = eventSchema.parse(req.body)
-  if (!saveEvent(event, 'published')) return res.status(409).json({ error: 'This event is already listed' })
-  res.status(201).end()
+  const id = saveEvent(event, 'published')
+  if (!id) return res.status(409).json({ error: 'This event is already listed' })
+  res.status(201).json({ id })
+})
+
+// Add or replace the poster.
+eventRoutes.put('/:id/poster', requireAuth, requireAdmin, (req, res) => {
+  getEvent(req.params.id as string) // 404 if there's no such event
+  savePoster(req.params.id as string, posterSchema.parse(req.body).image)
+  res.status(204).end()
+})
+
+// Remove an event (and its group) for good, e.g. cancelled or posted by mistake.
+eventRoutes.delete('/:id', requireAuth, requireAdmin, (req, res) => {
+  deleteEvent(req.params.id as string)
+  res.status(204).end()
 })
 
 // Edit fields, and/or publish or reject.

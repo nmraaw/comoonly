@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, useApi } from '../api'
 import { Empty } from '../components/UI'
 import type { EventItem } from '../types'
+import { shrink } from '../images'
 type Report = { source: string; via?: string; found?: number; added?: number; error?: string }[]
 
 // The same fields for editing a found event and for adding one by hand.
@@ -50,6 +51,11 @@ function Fields({ e }: { e?: Partial<EventItem> }) {
         Registration closes (optional)
         <input name="deadline" type="date" defaultValue={e?.deadline} />
       </label>
+      {e?.hasPoster ? <img className="event-poster" src={`/api/events/${e.id}/poster`} alt="Current poster" /> : null}
+      <label>
+        {e?.hasPoster ? 'Change poster (optional)' : 'Poster (optional)'}
+        <input name="poster" type="file" accept="image/png,image/jpeg,image/webp" />
+      </label>
     </>
   )
 }
@@ -58,12 +64,20 @@ function Fields({ e }: { e?: Partial<EventItem> }) {
 const values = (form: HTMLFormElement) => {
   const data = Object.fromEntries(new FormData(form)) as Record<string, string>
   data.date = data.date.replace(/T00:00$/, '')
+  delete data.poster // sent separately, see savePoster
   return data
+}
+
+// Uploads the picture picked in a form's poster field, if any.
+async function savePoster(id: string, input: HTMLInputElement) {
+  const file = input.files?.[0]
+  if (file) await api('/events/' + id + '/poster', { method: 'PUT', body: { image: await shrink(file) } })
 }
 
 // Admins only: run the finder, then approve, fix or reject what it found. Nothing goes live on its own.
 export default function ReviewEvents() {
   const drafts = useApi<EventItem[]>('/events/review')
+  const published = useApi<EventItem[]>('/events')
   const [report, setReport] = useState<Report | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -81,7 +95,9 @@ export default function ReviewEvents() {
   async function review(id: string, form: HTMLFormElement, status: 'published' | 'rejected') {
     try {
       await api('/events/' + id, { method: 'PATCH', body: { ...values(form), status } })
+      if (status === 'published') await savePoster(id, form.poster)
       drafts.reload()
+      published.reload()
     } catch (err) {
       alert((err as Error).message)
     }
@@ -89,8 +105,13 @@ export default function ReviewEvents() {
   async function add(form: HTMLFormElement) {
     const data = values(form)
     try {
-      await api('/events', { method: 'POST', body: { ...data, sourceUrl: data.registerUrl } })
+      const { id } = await api<{ id: string }>('/events', {
+        method: 'POST',
+        body: { ...data, sourceUrl: data.registerUrl },
+      })
+      await savePoster(id, form.poster)
       form.reset()
+      published.reload()
       setMessage('Published. It’s on the Events page now.')
     } catch (err) {
       setMessage((err as Error).message)
@@ -140,6 +161,25 @@ export default function ReviewEvents() {
             <button className="button lime">Publish</button>
           </div>
         </form>
+      ))}
+      <h2 className="section-title">Published</h2>
+      <p className="hint">Add or change posters here. To delete an event, use the Dashboard’s Events tab.</p>
+      {published.data && !published.data.length && <Empty>No upcoming events.</Empty>}
+      {published.data?.map((e) => (
+        <article className="group-card expanded" key={e.id}>
+          {Boolean(e.hasPoster) && <img className="event-poster" src={`/api/events/${e.id}/poster`} alt="" />}
+          <small>{new Date(e.date).toLocaleString('en-GB', { dateStyle: 'medium' })}</small>
+          <h2>{e.title}</h2>
+          <small>{e.goingCount} going together</small>
+          <label>
+            {e.hasPoster ? 'Change poster' : 'Add a poster'}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(ev) => savePoster(e.id, ev.currentTarget).then(published.reload, (err) => alert(err.message))}
+            />
+          </label>
+        </article>
       ))}
       <a className="button" href="/events/suggest" target="_blank" rel="noreferrer">
         Add from an Instagram or TikTok post →

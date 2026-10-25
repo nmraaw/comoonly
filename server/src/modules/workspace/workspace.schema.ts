@@ -10,8 +10,4 @@ export const activitySchema = z.object({
   notes: z.string().trim().max(500).default(''),
 })
 
-export const taskSchema = z.object({
-  title: z.string().trim().min(1, 'What needs doing?').max(100),
-})
-
 export type ActivityInput = z.infer<typeof activitySchema>

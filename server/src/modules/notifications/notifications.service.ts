@@ -1,17 +1,17 @@
 import { randomUUID } from 'node:crypto'
 import { db } from '../../db/connection.ts'
 
-// 'message' = a chat or private message (lights up the Messages tab); 'update' = everything else.
+// 'message' = a private message (lights up the Messages tab); 'update' = everything else, group chats included.
 type Kind = 'message' | 'update'
 
 // Called by other features: notify(hostId, 'update', 'Ali asked to join Film club', '/groups/x?tab=Members').
-export function notify(userIds: string | string[], kind: Kind, text: string, link: string) {
+// `merge`: a busy chat updates its one unread notice instead of piling up one per message.
+export function notify(userIds: string | string[], kind: Kind, text: string, link: string, merge = kind === 'message') {
   const now = Date.now()
   const short = text.length > 140 ? `${text.slice(0, 139)}…` : text
   for (const userId of [userIds].flat()) {
-    // A busy chat updates its one unread notice instead of piling up one per message.
     const merged =
-      kind === 'message' &&
+      merge &&
       db
         .prepare('UPDATE notifications SET text = ?, created_at = ? WHERE user_id = ? AND link = ? AND read = 0')
         .run(short, now, userId, link).changes

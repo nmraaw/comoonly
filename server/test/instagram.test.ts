@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import './helpers.ts' // fresh in-memory database
 import { config } from '../src/config.ts'
+import { db } from '../src/db/connection.ts'
 import { limits, looksLikeEvent, scanInstagram } from '../src/modules/events/events.instagram.ts'
 import { saveEvent } from '../src/modules/events/events.service.ts'
 
@@ -105,6 +106,8 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
       { source: 'Instagram @someorganizer', via: 'Instagram API', found: 2, added: 2 },
     ])
     assert.equal(aiCalls, 2)
+    // p1's picture became the poster of its 2 events; p4 is a video, so its events have none.
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM event_posters').get()!.n, 2)
     await scanInstagram(lists)
     assert.equal(aiCalls, 2) // second run: every post was already seen, nothing sent to the AI again
 

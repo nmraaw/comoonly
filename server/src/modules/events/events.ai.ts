@@ -1,7 +1,7 @@
 import { config } from '../../config.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { eventSchema, type EventInput } from './events.schema.ts'
-import { saveEvent } from './events.service.ts'
+import { savePoster, saveEvent } from './events.service.ts'
 
 export type Candidate = Record<string, unknown>
 export type Source = { name: string; url: string; city?: string }
@@ -150,5 +150,8 @@ export async function eventsFromPost(
     .filter((c) => !pakistanOnly || inPakistan(c))
     .map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))
   const events = cleanEvents(candidates, { name: 'post', url: post.postUrl })
-  return { found: events.length, added: events.filter((e) => saveEvent(e, 'draft', suggestedBy)).length }
+  // The post's picture becomes the event's poster, so people see it in the app.
+  const ids = events.map((e) => saveEvent(e, 'draft', suggestedBy)).filter((id) => id !== false)
+  if (post.image) for (const id of ids) savePoster(id, post.image)
+  return { found: events.length, added: ids.length }
 }

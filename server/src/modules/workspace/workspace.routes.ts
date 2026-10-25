@@ -2,16 +2,8 @@ import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { sendIcs } from '../../calendar.ts'
-import { activitySchema, taskSchema } from './workspace.schema.ts'
-import {
-  addActivity,
-  addTask,
-  getActivity,
-  listActivities,
-  listTasks,
-  toggleGoing,
-  toggleTask,
-} from './workspace.service.ts'
+import { activitySchema } from './workspace.schema.ts'
+import { addActivity, getActivity, listActivities, toggleGoing } from './workspace.service.ts'
 
 // Mounted at /api. A group's shared plans (activities) and to-dos, for members only.
 export const workspaceRoutes = Router()
@@ -37,16 +29,4 @@ workspaceRoutes.get('/activities/:id/calendar.ics', requireAuth, (req: any, res)
 
 workspaceRoutes.post('/activities/:id/going', requireAuth, (req: any, res) => {
   res.json(toggleGoing(req.params.id, req.user.id))
-})
-
-workspaceRoutes.get('/groups/:id/tasks', requireAuth, (req: any, res) => {
-  res.json(listTasks(req.params.id, req.user.id))
-})
-
-workspaceRoutes.post('/groups/:id/tasks', requireAuth, (req: any, res) => {
-  res.status(201).json(addTask(req.params.id, req.user.id, taskSchema.parse(req.body).title))
-})
-
-workspaceRoutes.post('/tasks/:id/toggle', requireAuth, (req: any, res) => {
-  res.json(toggleTask(req.params.id, req.user.id))
 })

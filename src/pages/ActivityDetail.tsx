@@ -92,9 +92,6 @@ export default function ActivityDetail() {
         <div className="notice mint">
           <strong>Before you go</strong>
           <p>{event.notes}</p>
-          <Link className="text-button" to={'/groups/' + group.id + '?tab=To-do'}>
-            Open group to-dos →
-          </Link>
         </div>
       )}
       <button className={'button ' + (event.going ? 'lime' : 'primary')} aria-pressed={event.going} onClick={toggle}>

@@ -64,9 +64,9 @@ test('notifications: join requests, acceptance, messages (merged), events by int
   await fetch(`${base}/groups/film-club/messages`, json({ text: 'one' }, sara))
   await fetch(`${base}/groups/film-club/messages`, json({ text: 'two' }, sara))
   const unread = await get('/notifications/unread', hamza)
-  assert.equal(unread.messages, 1) // two messages, one notice
+  assert.deepEqual([unread.total, unread.messages], [2, 0]) // "You're in!" + two messages in one notice; Messages is for private chats
   await get('/groups/film-club/messages', hamza) // opening the chat marks it read
-  assert.equal((await get('/notifications/unread', hamza)).messages, 0)
+  assert.equal((await get('/notifications/unread', hamza)).total, 1)
 
   // Areeba likes "Making music"/"Films"; a Film event in Sialkot (her city) reaches her, one in Karachi doesn't.
   const film = {
@@ -124,7 +124,7 @@ test('suggest an event: AI reads the post, result waits for review; closed or pa
   }
 })
 
-test('daily tidy-up removes drafts whose event or deadline has passed; published ones stay', async () => {
+test('daily tidy-up removes drafts whose event or deadline has passed; published ones a week after the event', async () => {
   const { saveEvent, tidyEvents } = await import('../src/modules/events/events.service.ts')
   const event = {
     title: 'Old draft',
@@ -145,10 +145,12 @@ test('daily tidy-up removes drafts whose event or deadline has passed; published
     deadline: '2001-01-01',
     registerUrl: 'https://old.test/2',
   })
-  saveEvent({ ...event, title: 'Old but published', registerUrl: 'https://old.test/3' }, 'published')
-  assert.equal(tidyEvents().drafts, 2)
+  saveEvent({ ...event, title: 'Long over', registerUrl: 'https://old.test/3' }, 'published')
+  const recent = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10)
+  saveEvent({ ...event, title: 'Three days ago', date: recent, registerUrl: 'https://old.test/4' }, 'published')
+  assert.deepEqual(tidyEvents(), { drafts: 2, rejected: 0, finished: 1 }) // published ones go a week after the event
   const { db } = await import('../src/db/connection.ts')
-  assert.ok(db.prepare("SELECT 1 FROM events WHERE title = 'Old but published'").get())
+  assert.ok(db.prepare("SELECT 1 FROM events WHERE title = 'Three days ago'").get())
 })
 
 test('too many wrong passwords locks that email for a while', async () => {

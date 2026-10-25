@@ -894,6 +894,15 @@ input[type='file']::file-selector-button {
   gap: 10px;
   align-items: flex-start;
 }
+/* Posters come in every shape; show the whole thing, never cropped, at most a phone screen tall. */
+.event-poster {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 18px;
+  background: var(--paper);
+}
 .event-head .mascot {
   width: 76px;
   flex: none;

@@ -38,7 +38,7 @@ export default function Privacy() {
         </li>
         <li>
           <strong>What you do in the app:</strong> groups you create, join or save, the hello you send with a request,
-          group and private messages, activities, to-dos, connections, blocks and reports.
+          group and private messages, activities, connections, blocks and reports.
         </li>
         <li>
           <strong>Events you suggest:</strong> the post link and caption. Screenshots are read once and not kept.
@@ -51,7 +51,7 @@ export default function Privacy() {
       <h2 className="section-title">Who sees what</h2>
       <ul>
         <li>Your profile (not your email) is visible to people logged in to Comoonly.</li>
-        <li>A group’s chat, members, activities and to-dos are visible only to its members.</li>
+        <li>A group’s chat, members and activities are visible only to its members.</li>
         <li>
           Private messages are visible only to the two of you. They’re possible only between accepted connections.
         </li>

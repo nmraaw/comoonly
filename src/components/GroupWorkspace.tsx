@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
-import type { Activity, Task } from '../types'
-import { Avatar, Chips, Empty, Mascot, Modal } from './UI'
+import type { Activity, EventItem } from '../types'
+import { Avatar, Chips, Empty, Modal } from './UI'
+import EventCard from './EventCard'
 import Chat from './Chat'
 import DetailHeader from './DetailHeader'
 import { api, useApi } from '../api'
@@ -13,18 +14,20 @@ export default function GroupWorkspace({ id }: { id: string }) {
   const { me, groups, refresh } = useApp()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const tab = ['Chat', 'Activities', 'To-do', 'Members'].includes(params.get('tab') || '') ? params.get('tab')! : 'Chat'
-  const [form, setForm] = useState<'task' | 'event' | null>(null)
+  const group = groups.find((g) => g.id === id)
+  // An event's group opens on the event itself (poster, details, links); other groups on their chat.
+  const sections = group?.forEvent ? ['Event', 'Chat', 'Activities', 'Members'] : ['Chat', 'Activities', 'Members']
+  const tab = sections.includes(params.get('tab') || '') ? params.get('tab')! : sections[0]
+  const event = useApi<EventItem>(group?.forEvent ? '/events/for-group/' + id : null)
+  const [planning, setPlanning] = useState(false)
   const [error, setError] = useState('')
   const [joinedActivity, setJoinedActivity] = useState<Activity>() // just joined: offer the calendar
-  const group = groups.find((g) => g.id === id)
   const host = group?.ownerId === me!.id
   const members = useApi<{ id: string; name: string; role: string }[]>('/groups/' + id + '/members')
   const requests = useApi<{ id: string; name: string; city: string; intro: string }[]>(
     host ? '/groups/' + id + '/requests' : null,
   )
   const activities = useApi<Activity[]>('/groups/' + id + '/activities')
-  const tasks = useApi<Task[]>('/groups/' + id + '/tasks')
   // Every change goes to the server first; then the list is loaded again so everyone sees the same thing.
   async function run(action: Promise<unknown>, ...lists: { reload: () => void }[]) {
     try {
@@ -44,16 +47,15 @@ export default function GroupWorkspace({ id }: { id: string }) {
     const data = Object.fromEntries(new FormData(f))
     setError('')
     try {
-      await api('/groups/' + id + (form === 'task' ? '/tasks' : '/activities'), { method: 'POST', body: data })
-      ;(form === 'task' ? tasks : activities).reload()
-      setForm(null)
+      await api('/groups/' + id + '/activities', { method: 'POST', body: data })
+      activities.reload()
+      setPlanning(false)
     } catch (err) {
       setError((err as Error).message)
     }
   }
   if (!group) return <Empty>Group not found.</Empty>
   const events = activities.data || []
-  const todo = tasks.data || []
   return (
     <>
       <DetailHeader title={group.name} fallback="/groups" />
@@ -65,12 +67,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
           {group.members} {group.members === 1 ? 'person' : 'people'} · your crew
         </small>
       </div>
-      <Chips
-        label="Group sections"
-        values={['Chat', 'Activities', 'To-do', 'Members']}
-        value={tab}
-        onChange={(v) => setParams({ tab: v })}
-      />
+      <Chips label="Group sections" values={sections} value={tab} onChange={(v) => setParams({ tab: v })} />
       {tab === 'Chat' && (
         <>
           <button className="activity-card lilac" onClick={() => setParams({ tab: 'Activities' })}>
@@ -81,38 +78,10 @@ export default function GroupWorkspace({ id }: { id: string }) {
           <Chat path={'/groups/' + id + '/messages'} />
         </>
       )}
-      {tab === 'To-do' && (
+      {tab === 'Event' && (
         <>
-          <div className="illustrated-banner mint">
-            <div>
-              <h1>
-                Tiny steps.
-                <br />
-                Real plans.
-              </h1>
-              <small>
-                {todo.filter((t) => t.done).length} of {todo.length} done. Look at you go.
-              </small>
-            </div>
-            <Mascot name="loop" />
-          </div>
-          <button className="button lime inline" onClick={() => setForm('task')}>
-            Add task
-          </button>
-          <h2 className="section-title">Tasks</h2>
-          {tasks.data && !todo.length && <Empty>No tasks yet. Start with one small thing.</Empty>}
-          {todo.map((t) => (
-            <label className={'task-row ' + (t.done ? 'done' : '')} key={t.id}>
-              <input
-                type="checkbox"
-                checked={t.done}
-                onChange={() => run(api('/tasks/' + t.id + '/toggle', { method: 'POST' }), tasks)}
-              />
-              <span>
-                <strong>{t.title}</strong>
-              </span>
-            </label>
-          ))}
+          {event.data && <EventCard event={event.data} inGroup />}
+          {event.error && <Empty>{event.error}</Empty>}
         </>
       )}
       {tab === 'Activities' && (
@@ -143,7 +112,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
           {joinedActivity && (
             <CalendarPopup {...activityCalendar(joinedActivity)} onClose={() => setJoinedActivity(undefined)} />
           )}
-          <button className="button" onClick={() => setForm('event')}>
+          <button className="button" onClick={() => setPlanning(true)}>
             ＋ Plan an activity
           </button>
         </>
@@ -204,11 +173,11 @@ export default function GroupWorkspace({ id }: { id: string }) {
           )}
         </>
       )}
-      {form && (
+      {planning && (
         <Modal
-          title={form === 'task' ? 'One thing at a time.' : 'A plan for your group.'}
+          title="A plan for your group."
           onClose={() => {
-            setForm(null)
+            setPlanning(false)
             setError('')
           }}
         >
@@ -219,44 +188,35 @@ export default function GroupWorkspace({ id }: { id: string }) {
             }}
           >
             <label>
-              {form === 'task' ? 'What needs doing?' : 'What’s the plan?'}
-              <input
-                name="title"
-                required
-                maxLength={100}
-                placeholder={form === 'task' ? 'Pick one small thing' : 'Name your little plan'}
+              What’s the plan?
+              <input name="title" required maxLength={100} placeholder="Name your little plan" />
+            </label>
+            <label>
+              When
+              <input type="datetime-local" name="date" required />
+            </label>
+            <label>
+              Meeting place
+              <input name="place" required maxLength={120} placeholder="A public place, or online" />
+            </label>
+            <label>
+              The very loose plan (optional, one step per line)
+              <textarea
+                name="plan"
+                maxLength={500}
+                placeholder={'Read one chapter\nShare one passage\nKeep it spoiler-free'}
               />
             </label>
-            {form === 'event' && (
-              <>
-                <label>
-                  When
-                  <input type="datetime-local" name="date" required />
-                </label>
-                <label>
-                  Meeting place
-                  <input name="place" required maxLength={120} placeholder="A public place, or online" />
-                </label>
-                <label>
-                  The very loose plan (optional, one step per line)
-                  <textarea
-                    name="plan"
-                    maxLength={500}
-                    placeholder={'Read one chapter\nShare one passage\nKeep it spoiler-free'}
-                  />
-                </label>
-                <label>
-                  Before you go (optional)
-                  <input name="notes" maxLength={500} placeholder="Bring one passage that stayed with you." />
-                </label>
-              </>
-            )}
+            <label>
+              Before you go (optional)
+              <input name="notes" maxLength={500} placeholder="Bring one passage that stayed with you." />
+            </label>
             {error && (
               <p className="notice pink" role="alert">
                 {error}
               </p>
             )}
-            <button className="button lime">{form === 'task' ? 'Save task +' : 'Save plan →'}</button>
+            <button className="button lime">Save plan →</button>
           </form>
         </Modal>
       )}

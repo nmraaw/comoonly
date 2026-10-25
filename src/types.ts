@@ -35,7 +35,6 @@ export type User = {
 export type Me = User & { email: string; isAdmin: boolean }
 
 export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number }
-export type Task = { id: string; title: string; done: boolean }
 export type Activity = {
   id: string
   groupId: string
@@ -63,6 +62,7 @@ export type EventItem = {
   sourceUrl: string
   groupId: string | null
   goingCount: number
+  hasPoster: 0 | 1
 }
 
 export type Status = 'pending' | 'joined' // your membership of a group

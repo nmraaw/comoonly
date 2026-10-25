@@ -55,7 +55,8 @@ export function sendToGroup(groupId: string, userId: string, text: string) {
     )
     .all(groupId, userId, userId)
     .map((r: any) => r.user_id)
-  notify(others, 'message', `${nameOf(userId)} in ${group.name}: ${text}`, `/groups/${groupId}?tab=Chat`)
+  // Group chats live in their group, not in Messages (that's for private chats), so this is a bell notice.
+  notify(others, 'update', `${nameOf(userId)} in ${group.name}: ${text}`, `/groups/${groupId}?tab=Chat`, true)
   return message
 }
 
@@ -79,16 +80,8 @@ function insert(m: { groupId: string | null; toId: string | null; userId: string
   return db.prepare(`${SELECT} WHERE m.id = ?`).get(id)
 }
 
-// The Messages screen: your groups and accepted connections, each with its latest message.
+// The Messages screen: private chats with your accepted connections, each with its latest message.
 export function conversations(userId: string) {
-  const groups = db
-    .prepare(
-      `SELECT g.id, g.name, g.color,
-         (SELECT text FROM messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) AS last
-       FROM group_members gm JOIN groups g ON g.id = gm.group_id
-       WHERE gm.user_id = ? AND gm.status = 'joined' ORDER BY g.name`,
-    )
-    .all(userId)
   const people = db
     .prepare(
       `SELECT u.id, u.name,
@@ -98,5 +91,5 @@ export function conversations(userId: string) {
        WHERE (c.from_id = ? OR c.to_id = ?) AND c.status = 'accepted' ORDER BY u.name`,
     )
     .all(userId, userId, userId, userId, userId)
-  return { groups, people }
+  return { people }
 }

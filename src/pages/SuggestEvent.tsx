@@ -2,16 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import DetailHeader from '../components/DetailHeader'
-// Phone screenshots are large; scale to at most 1600px and save as JPEG before sending (still sharp enough to read).
-async function shrink(file: File) {
-  const img = await createImageBitmap(file)
-  const scale = Math.min(1, 1600 / Math.max(img.width, img.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(img.width * scale)
-  canvas.height = Math.round(img.height * scale)
-  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', 0.85)
-}
+import { shrink } from '../images'
 // Anyone can share an event they saw on Instagram, TikTok, WhatsApp or a poster. It goes live after a review.
 export default function SuggestEvent() {
   const [note, setNote] = useState('')

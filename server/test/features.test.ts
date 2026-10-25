@@ -56,11 +56,6 @@ test('group chat, activities and to-dos are for members only', async () => {
   assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: zain } }), 404) // members only
   assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: hira } }), 200)
 
-  const tasks = await (await fetch(`${base}/groups/tiny-game/tasks`, json({ title: 'Pick a mechanic' }, hira))).json()
-  const toggled = await (await fetch(`${base}/tasks/${tasks[0].id}/toggle`, json({}, hira))).json()
-  assert.equal(toggled[0].done, true)
-  assert.equal(await status(`/tasks/${tasks[0].id}/toggle`, json({}, zain)), 403)
-
   assert.deepEqual(await (await fetch(`${base}/groups/film-club/save`, json({}, zain))).json(), ['film-club'])
   assert.deepEqual(await (await fetch(`${base}/groups/film-club/save`, json({}, zain))).json(), []) // again = unsave
 })
@@ -121,6 +116,19 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.match(ics, /DTSTART:20300201T040000Z\r\n/)
   assert.match(ics, /SUMMARY:Karachi Code Jam\r\nLOCATION:Karachi\r\n/)
 
+  // Posters: admins add one; members see it, and the event group finds its event.
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  assert.equal(await status(`/events/${listed.id}/poster`, json({ image: png }, hira, 'PUT')), 403)
+  assert.equal(
+    await status(`/events/${listed.id}/poster`, json({ image: 'data:text/html;base64,PGI+' }, sara, 'PUT')),
+    400,
+  )
+  assert.equal(await status(`/events/${listed.id}/poster`, json({ image: png }, sara, 'PUT')), 204)
+  const poster = await fetch(`${base}/events/${listed.id}/poster`, { headers: { cookie: zain } })
+  assert.equal(poster.headers.get('content-type'), 'image/png')
+  const forGroup = await get(`/events/for-group/${first.groupId}`, zain)
+  assert.deepEqual([forGroup.id, forGroup.hasPoster], [listed.id, 1])
+
   // A one-field edit must only change that field (regression: defaults used to wipe city and category).
   const edited = await (
     await fetch(`${base}/events/${listed.id}`, json({ title: 'Karachi Code Jam 2' }, sara, 'PATCH'))
@@ -141,8 +149,8 @@ test('admins publish events; anyone can find people to go with', async () => {
     sourceUrl: 'https://instagram.test',
   }
   assert.equal(
-    saveEvent({ ...concert, title: 'Prem Nagar Charity Concert', registerUrl: 'https://instagram.test/p/a' }),
-    true,
+    typeof saveEvent({ ...concert, title: 'Prem Nagar Charity Concert', registerUrl: 'https://instagram.test/p/a' }),
+    'string', // the new event's id
   )
   assert.equal(
     saveEvent({
@@ -153,8 +161,14 @@ test('admins publish events; anyone can find people to go with', async () => {
     false,
   )
   assert.equal(
-    saveEvent({ ...concert, title: 'Clay Mirror Workshop', registerUrl: 'https://instagram.test/p/c' }),
-    true,
+    typeof saveEvent({ ...concert, title: 'Clay Mirror Workshop', registerUrl: 'https://instagram.test/p/c' }),
+    'string',
   )
   assert.equal(await status('/events/review', { headers: { cookie: hira } }), 403)
+
+  // Deleting an event (admins only) removes its go-together group too.
+  assert.equal(await status(`/events/${listed.id}`, json({}, hira, 'DELETE')), 403)
+  assert.equal(await status(`/events/${listed.id}`, json({}, sara, 'DELETE')), 204)
+  assert.equal(await status(`/groups/${first.groupId}`), 404)
+  assert.equal((await get('/events', hira)).length, 0)
 })

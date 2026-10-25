@@ -4,10 +4,11 @@ import { useApp } from '../state/AppContext'
 import { api } from '../api'
 import type { EventItem } from '../types'
 import { Mascot } from './UI'
+import Icon from './Icon'
 import AddToCalendar, { CalendarPopup } from './AddToCalendar'
 
-// One published event, on Discover and the Events page: its official page, and a group to go together.
-export default function EventCard({ event: e }: { event: EventItem }) {
+// One published event, on Discover, the Events page and (inGroup) its own group's pages.
+export default function EventCard({ event: e, inGroup = false }: { event: EventItem; inGroup?: boolean }) {
   const { refresh, membership } = useApp()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
@@ -18,13 +19,21 @@ export default function EventCard({ event: e }: { event: EventItem }) {
     try {
       const { groupId } = await api<{ groupId: string }>('/events/' + e.id + '/go', { method: 'POST' })
       await refresh()
-      if (joined) navigate('/groups/' + groupId + '?tab=Chat')
+      if (joined) navigate('/groups/' + groupId)
       else setNewGroup(groupId)
     } catch (err) {
       alert((err as Error).message)
       setBusy(false)
     }
   }
+  const when = new Date(e.date).toLocaleString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(e.date.slice(0, 4) !== String(new Date().getFullYear()) && { year: 'numeric' }),
+    ...(e.date.length > 10 && { hour: '2-digit', minute: '2-digit' }),
+  })
+  const place = [e.mode === 'In person' ? '' : e.mode, e.city].filter(Boolean).join(' · ') || 'In person'
   const calendar = {
     title: e.title,
     date: e.date,
@@ -34,28 +43,42 @@ export default function EventCard({ event: e }: { event: EventItem }) {
   }
   return (
     <article className="group-card expanded" data-card-id={e.id}>
+      {Boolean(e.hasPoster) && (
+        <img className="event-poster" src={`/api/events/${e.id}/poster`} alt={`Poster for ${e.title}`} loading="lazy" />
+      )}
       <div className="event-head">
         <div>
-          <small>
-            {new Date(e.date).toLocaleString('en-GB', {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-              ...(e.date.slice(0, 4) !== String(new Date().getFullYear()) && { year: 'numeric' }),
-              ...(e.date.length > 10 && { hour: '2-digit', minute: '2-digit' }),
-            })}
-          </small>
+          {!inGroup && <small>{when}</small>}
           <h2>{e.title}</h2>
         </div>
-        <Mascot seed={e.id} />
+        {!e.hasPoster && <Mascot seed={e.id} />}
       </div>
+      {/* On the event's own pages, when and where come first, in bold. */}
+      {inGroup && (
+        <div className="notice info-rows">
+          <p>
+            <Icon name="clock" />
+            <strong>{when}</strong>
+          </p>
+          <p>
+            <Icon name="pin" />
+            <strong>{place}</strong>
+          </p>
+          <p>
+            <Icon name="Groups" />
+            {e.goingCount} going together
+          </p>
+        </div>
+      )}
       {e.description && <p>{e.description}</p>}
       <div className="meta">
         <span className="chip selected">{e.category}</span>
-        <small>
-          {[e.mode, e.city].filter(Boolean).join(' · ')}
-          {e.goingCount ? ` · ${e.goingCount} going together` : ''}
-        </small>
+        {!inGroup && (
+          <small>
+            {[e.mode, e.city].filter(Boolean).join(' · ')}
+            {e.goingCount ? ` · ${e.goingCount} going together` : ''}
+          </small>
+        )}
       </div>
       {e.deadline && (
         <p className="hint">
@@ -65,11 +88,13 @@ export default function EventCard({ event: e }: { event: EventItem }) {
       <a className="button" href={e.registerUrl} target="_blank" rel="noopener noreferrer">
         Official page ↗
       </a>
-      <button className="button primary" disabled={busy} onClick={goWith}>
-        {busy ? 'One moment…' : joined ? 'Open event group →' : 'Find people to go with →'}
-      </button>
+      {!inGroup && (
+        <button className="button primary" disabled={busy} onClick={goWith}>
+          {busy ? 'One moment…' : joined ? 'Open event group →' : 'Find people to go with →'}
+        </button>
+      )}
       {joined && !newGroup && <AddToCalendar {...calendar} />}
-      {newGroup && <CalendarPopup {...calendar} onClose={() => navigate('/groups/' + newGroup + '?tab=Chat')} />}
+      {newGroup && <CalendarPopup {...calendar} onClose={() => navigate('/groups/' + newGroup)} />}
     </article>
   )
 }
