@@ -7,7 +7,6 @@ import {
   deleteEvent,
   eventForGroup,
   getEvent,
-  getPoster,
   listDrafts,
   savePoster,
   listPublished,
@@ -17,6 +16,7 @@ import {
 import { eventsFromPost } from './events.ai.ts'
 import { scanSources } from './events.finder.ts'
 import { sendIcs } from '../../calendar.ts'
+import { sendPhoto } from '../../photos.ts'
 
 export const eventRoutes = Router()
 
@@ -51,9 +51,7 @@ eventRoutes.get('/for-group/:groupId', requireAuth, (req, res) => {
 })
 
 eventRoutes.get('/:id/poster', requireAuth, (req, res) => {
-  const poster = getPoster(req.params.id as string)
-  if (!poster) throw new HttpError(404, 'No poster')
-  res.type(poster.mime).set('cache-control', 'private, max-age=86400').send(Buffer.from(poster.bytes))
+  sendPhoto(res, 'poster', req.params.id as string)
 })
 
 // "Add to calendar" (Apple, Outlook, phones).

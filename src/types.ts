@@ -18,6 +18,7 @@ export type Group = {
   forEvent: boolean // an event's "everyone going" group or a crew: reached from the event, not listed on Discover
   crewFor: string | null // a crew: the id of the event it's going to
   womenOnly: boolean
+  hasPhoto: boolean // a photo or poster the host added
 }
 
 // A person (GET /api/users/:id). `connection` is how you're linked to them:
@@ -39,17 +40,6 @@ export type Me = User & { email: string; isAdmin: boolean; gender: Gender }
 export type Gender = '' | 'woman' | 'man' | 'private'
 
 export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number }
-export type Activity = {
-  id: string
-  groupId: string
-  title: string
-  date: string
-  place: string
-  plan: string
-  notes: string
-  going: boolean
-  goingCount: number
-}
 
 // An event on the Events page or in the review queue (GET /api/events).
 export type EventItem = {

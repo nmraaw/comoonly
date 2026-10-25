@@ -8,9 +8,14 @@ export default function GroupCard({ group }: { group: Group }) {
   const status = membership[group.id]
   return (
     <article className="group-card expanded" data-card-id={group.id}>
+      {group.hasPhoto && (
+        <Link to={'/posts/' + group.id} tabIndex={-1} aria-hidden="true">
+          <img className="event-poster" src={`/api/groups/${group.id}/photo`} alt="" loading="lazy" />
+        </Link>
+      )}
       <div className="card-person">
         <Link className="person-button" to={'/users/' + group.ownerId}>
-          <Avatar name={group.owner} />
+          <Avatar id={group.ownerId} name={group.owner} />
           <span>
             <strong>{group.owner}</strong>
             <small>{group.location}</small>

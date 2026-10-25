@@ -96,6 +96,8 @@ export function createCrew(eventId: string, userId: string, input: CrewInput) {
   requireVerified(userId)
   const me = findUser(userId)
   if (input.womenOnly && me.gender !== 'woman') throw new HttpError(403, 'Only women can start a women-only crew')
+  if (db.prepare('SELECT 1 FROM groups WHERE event_id = ? AND owner_id = ?').get(eventId, userId))
+    throw new HttpError(409, 'You already organize a crew for this event')
   return transaction(() => {
     if (!intentOf(eventId, userId)) goTo(eventId, userId, 'company') // starting a crew means you're going
     const crew = createGroup(userId, {

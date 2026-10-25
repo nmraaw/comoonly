@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DetailHeader from '../components/DetailHeader'
-import { Logo } from '../components/UI'
+import { Avatar, Logo } from '../components/UI'
+import { api } from '../api'
+import { photoChanged, shrink } from '../images'
 import { useApp } from '../state/AppContext'
 import type { Gender } from '../types'
 // The last four match event types, so you hear about new hackathons, workshops etc. (see events.service.ts).
@@ -36,6 +38,11 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
     setBusy(true)
     setError('')
     try {
+      const photo = data.get('photo') as File | null
+      if (photo?.size) {
+        await api('/users/me/photo', { method: 'PUT', body: { image: await shrink(photo, 600) } })
+        photoChanged()
+      }
       await saveProfile({
         name: String(data.get('name')),
         city: String(data.get('city')),
@@ -80,6 +87,13 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
           submit(e.currentTarget)
         }}
       >
+        <div className="photo-row">
+          <Avatar id={me!.id} name={me!.name} />
+          <label>
+            Profile photo (optional)
+            <input name="photo" type="file" accept="image/png,image/jpeg,image/webp" />
+          </label>
+        </div>
         <label>
           Your name
           <input name="name" required maxLength={60} defaultValue={me!.name} />

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
+import { photoSchema, savePhoto, sendPhoto } from '../../photos.ts'
 import { createGroupSchema, listQuerySchema } from './groups.schema.ts'
 import { createGroup, getGroup, listGroups, listMembers, savedGroupIds, toggleSaved } from './groups.service.ts'
 
@@ -24,6 +25,17 @@ groupRoutes.get('/:id', (req, res) => {
   const group = getGroup(req.params.id)
   if (!group) throw new HttpError(404, 'Group not found')
   res.json(group)
+})
+
+groupRoutes.get('/:id/photo', (req, res) => {
+  sendPhoto(res, 'group', req.params.id)
+})
+
+// The host adds or replaces the group's photo or poster.
+groupRoutes.put('/:id/photo', requireAuth, (req: any, res) => {
+  if (getGroup(req.params.id)?.ownerId !== req.user.id) throw new HttpError(403, 'Only the host can change the photo')
+  savePhoto('group', req.params.id, photoSchema.parse(req.body).image)
+  res.status(204).end()
 })
 
 groupRoutes.get('/:id/members', requireAuth, (req: any, res) => {

@@ -78,8 +78,25 @@ export default function EventPage() {
         event={e}
         after={
           <>
-            <h2 className="section-title">Go together in a crew</h2>
-            <p>Small groups of 2 to 5 who meet up first and go together. The organizer says yes to who joins.</p>
+            <h2 className="section-title">Go together</h2>
+            <div className="notice info-rows">
+              <p>
+                <strong>💬 Everyone going</strong> · one big group chat for everyone from Comoonly at this event. Say
+                hi, ask questions, find people.
+              </p>
+              {intent && intent.value !== 'friends' && e.groupId ? (
+                <Link className="button primary" to={'/groups/' + e.groupId + '?tab=Chat'}>
+                  Open the group chat →
+                </Link>
+              ) : (
+                <small>Open to anyone going who’s looking for company or happy to meet people.</small>
+              )}
+            </div>
+            <h2 className="section-title">Crews</h2>
+            <p>
+              <strong>A crew is 2 to 5 people</strong> who meet up first and arrive together. The organizer says yes to
+              who joins.
+            </p>
             {!me!.verified && (
               <Link className="notice pink" to="/me/edit">
                 <strong>Get ✓ Verified</strong> to start or join a crew: finish your profile →
@@ -88,7 +105,7 @@ export default function EventPage() {
             {crews.data?.map((c) => (
               <article className="notice lilac" key={c.id}>
                 <p>
-                  <strong>{c.owner.split(' ')[0]}’s crew</strong>
+                  <strong>{c.ownerId === me!.id ? 'Your crew' : `${c.owner.split(' ')[0]}’s crew`}</strong>
                   {c.womenOnly && <span className="pill">👩 Women only</span>}
                 </p>
                 <p>
@@ -115,7 +132,7 @@ export default function EventPage() {
               </article>
             ))}
             {crews.data && !crews.data.length && <p className="hint">No crews yet. Start the first one!</p>}
-            {me!.verified && (
+            {me!.verified && !crews.data?.some((c) => c.ownerId === me!.id) && (
               <button className="button lime" onClick={() => setStarting(true)}>
                 ＋ Start a crew
               </button>
@@ -133,11 +150,6 @@ export default function EventPage() {
                 Change
               </button>
             </div>
-            {intent.value !== 'friends' && e.groupId && (
-              <Link className="button primary" to={'/groups/' + e.groupId + '?tab=Chat'}>
-                Everyone going · group chat →
-              </Link>
-            )}
           </>
         ) : (
           <button className="button primary" onClick={() => setChoosing(true)}>

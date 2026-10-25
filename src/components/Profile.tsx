@@ -47,7 +47,7 @@ export default function Profile({
     <>
       <div className="profile-card lilac">
         <div className="person-button">
-          <Avatar name={person.name} />
+          <Avatar id={person.id} name={person.name} />
           <div>
             <h1>{person.name}</h1>
             {person.verified && <span className="pill">✓ Verified</span>}

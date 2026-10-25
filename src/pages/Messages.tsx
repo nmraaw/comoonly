@@ -63,14 +63,14 @@ export default function Messages() {
         label="Conversation filter"
         values={['Chats', 'Requests']}
         value={tab}
-        onChange={(view) => setParams({ view })}
+        onChange={(view) => setParams({ view }, { replace: true })}
       />
       {tab === 'Requests' ? (
         <>
           {incoming.map((user) => (
             <article className="profile-card lilac" key={user.id}>
               <Link to={'/users/' + user.id}>
-                <Avatar name={user.name} />
+                <Avatar id={user.id} name={user.name} />
                 <h2>{user.name}</h2>
               </Link>
               <p>{user.city ? user.city + ' · ' : ''}wants to connect with you.</p>
@@ -114,7 +114,7 @@ export default function Messages() {
             </Empty>
           )}
           {incoming.length > 0 && (
-            <button className="conversation" onClick={() => setParams({ view: 'Requests' })}>
+            <button className="conversation" onClick={() => setParams({ view: 'Requests' }, { replace: true })}>
               <div>
                 <h2>Message requests</h2>
                 <p>{incoming.length} waiting for you →</p>

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
+import { savePhoto } from '../../photos.ts'
 import { INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
@@ -79,20 +80,7 @@ export function saveEvent(
   return result.changes > 0 && id // the new event's id, or false for a duplicate
 }
 
-// shortcut: posters live in the database as bytes (a few hundred KB each), move them to file storage
-// (e.g. Cloudflare R2) if there are thousands.
-export function savePoster(eventId: string, dataUrl: string) {
-  const [, mime, base64] = dataUrl.match(/^data:([^;]+);base64,(.+)$/)!
-  db.prepare(
-    `INSERT INTO event_posters (event_id, mime, bytes) VALUES (?, ?, ?)
-     ON CONFLICT (event_id) DO UPDATE SET mime = excluded.mime, bytes = excluded.bytes`,
-  ).run(eventId, mime, Buffer.from(base64, 'base64'))
-}
-
-export function getPoster(eventId: string) {
-  return db.prepare('SELECT mime, bytes FROM event_posters WHERE event_id = ?').get(eventId) as
-    { mime: string; bytes: Uint8Array } | undefined
-}
+export const savePoster = (eventId: string, dataUrl: string) => savePhoto('poster', eventId, dataUrl)
 
 // The event an event group was made for, shown at the top of that group.
 export function eventForGroup(groupId: string) {

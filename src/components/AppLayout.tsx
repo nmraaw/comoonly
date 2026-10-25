@@ -26,7 +26,6 @@ export default function AppLayout() {
             className={({ isActive }) =>
               isActive ||
               (label === 'Discover' && /^\/(posts|events|notifications)/.test(pathname)) ||
-              (label === 'Groups' && pathname.startsWith('/activities/')) ||
               (label === 'Me' && /^\/users/.test(pathname))
                 ? 'active'
                 : ''

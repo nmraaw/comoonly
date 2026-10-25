@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { imageSchema, photoSchema } from '../../photos.ts'
 
 const httpUrl = z.url({ protocol: /^https?$/, message: 'Use a full https:// link' })
 
@@ -38,23 +39,17 @@ export const eventPatchSchema = z
   .partial()
   .extend({ status: z.enum(['draft', 'published', 'rejected']).optional() })
 
-// A picture sent as a data URL. ~7 MB of text is a ~5 MB image.
-const image = z
-  .string()
-  .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, 'Use a PNG, JPG or WebP image')
-  .max(7_000_000, 'That image is too big; try a smaller one')
-
 // "Suggest an event": the post's link, plus its caption and/or a screenshot of the poster.
 export const suggestSchema = z
   .object({
     postUrl: httpUrl,
     text: z.string().trim().max(5000).default(''),
-    image: image.optional(),
+    image: imageSchema.optional(),
   })
   .refine((p) => p.text || p.image, { message: 'Paste the caption or add a screenshot', path: ['text'] })
 
 // An admin adding or changing an event's poster.
-export const posterSchema = z.object({ image })
+export const posterSchema = photoSchema
 
 // "I want to go": looking for company, happy to meet people there, or going with my own friends.
 export const goSchema = z.object({ intent: z.enum(['company', 'meet', 'friends']) })

@@ -24,6 +24,7 @@ test('feed returns seeded groups in the frontend shape, with filters and sorting
     forEvent: false,
     crewFor: null,
     womenOnly: false,
+    hasPhoto: false,
   })
   const creative = await get('/groups?category=Creative&location=Sialkot')
   assert.deepEqual(

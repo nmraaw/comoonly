@@ -1059,3 +1059,30 @@ a.notice {
   background: var(--lime);
   border: 2px solid var(--ink);
 }
+
+/* Profile photos fill their circle. */
+.avatar {
+  overflow: hidden;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* A small label beside a heading, e.g. "Women only" next to a crew's name. */
+.notice .pill {
+  margin-left: 8px;
+  padding: 4px 10px;
+  vertical-align: middle;
+}
+
+.photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.photo-row .avatar {
+  width: 64px;
+  height: 64px;
+  font-size: 20px;
+}

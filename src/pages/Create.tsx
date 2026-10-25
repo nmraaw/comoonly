@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Chips, Mascot } from '../components/UI'
 import { useApp } from '../state/AppContext'
+import { api } from '../api'
+import { shrink } from '../images'
 export default function Create() {
-  const { me, create } = useApp()
+  const { me, create, refresh } = useApp()
   const [category, setCategory] = useState('Creative')
   const [mode, setMode] = useState('In person')
   const [created, setCreated] = useState<string | null>(null)
@@ -14,16 +16,23 @@ export default function Create() {
     setBusy(true)
     setError('')
     try {
-      setCreated(
-        await create({
-          name: String(data.get('name')),
-          description: String(data.get('description')),
-          category,
-          mode,
-          location: mode === 'Online' ? 'Online' : String(data.get('location')),
-          spots: Number(data.get('spots')),
-        }),
-      )
+      const id = await create({
+        name: String(data.get('name')),
+        description: String(data.get('description')),
+        category,
+        mode,
+        location: mode === 'Online' ? 'Online' : String(data.get('location')),
+        spots: Number(data.get('spots')),
+      })
+      const photo = data.get('photo') as File | null
+      if (photo?.size) {
+        // The group exists already: a failed upload shouldn't make people create it twice.
+        await api('/groups/' + id + '/photo', { method: 'PUT', body: { image: await shrink(photo) } }).then(
+          refresh, // so the card shows it
+          () => alert('Your group is live, but the photo didn’t upload. Try a smaller one later.'),
+        )
+      }
+      setCreated(id)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -91,6 +100,10 @@ export default function Create() {
         <label>
           How many people are you looking for?
           <input name="spots" type="number" min="1" max="30" required defaultValue="3" />
+        </label>
+        <label>
+          A photo or poster (optional)
+          <input name="photo" type="file" accept="image/png,image/jpeg,image/webp" />
         </label>
         <p className="hint">Keep the exact address private until people join.</p>
         {error && (

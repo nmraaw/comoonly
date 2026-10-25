@@ -36,25 +36,11 @@ test('connections, then direct messages only between connected people', async ()
   assert.equal(await status('/users/zain/connect', json({}, zain)), 400) // can't connect with yourself
 })
 
-test('group chat, activities and to-dos are for members only', async () => {
+test('group chat is for members only', async () => {
   const [hira, zain] = [await loginAs('hira'), await loginAs('zain')] // Hira hosts tiny-game; Zain isn't in it
   assert.equal(await status('/groups/tiny-game/messages', json({ text: 'Welcome!' }, hira)), 201)
   assert.equal((await get('/groups/tiny-game/messages', hira))[0].text, 'Welcome!')
   assert.equal(await status('/groups/tiny-game/messages', { headers: { cookie: zain } }), 403)
-
-  const plan = { title: 'First jam', date: '2030-01-05T16:00', place: 'Online' }
-  assert.equal(await status('/groups/tiny-game/activities', json({ ...plan, date: 'soon' }, hira)), 400)
-  const activity = await (await fetch(`${base}/groups/tiny-game/activities`, json(plan, hira))).json()
-  const going = await (await fetch(`${base}/activities/${activity.id}/going`, json({}, hira))).json()
-  assert.deepEqual([going.going, going.goingCount], [true, 1])
-  assert.deepEqual(await get(`/activities/${activity.id}`, zain), {
-    id: activity.id,
-    groupId: 'tiny-game',
-    locked: true,
-  })
-  assert.equal(await status(`/activities/${activity.id}/going`, json({}, zain)), 403)
-  assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: zain } }), 404) // members only
-  assert.equal(await status(`/activities/${activity.id}/calendar.ics`, { headers: { cookie: hira } }), 200)
 
   assert.deepEqual(await (await fetch(`${base}/groups/film-club/save`, json({}, zain))).json(), ['film-club'])
   assert.deepEqual(await (await fetch(`${base}/groups/film-club/save`, json({}, zain))).json(), []) // again = unsave
@@ -189,6 +175,7 @@ test('admins publish events; anyone can find people to go with', async () => {
   const asked = await (await fetch(`${base}/groups/${crewId}/requests`, json({ intro: 'Can I come?' }, noor))).json()
   assert.equal(asked.status, 'pending')
   assert.equal(await status(`/groups/${crewId}/requests/noor`, json({ decision: 'accept' }, hira)), 200)
+  assert.equal(await status(`/events/${listed.id}/crews`, json(crew, hira)), 409) // one crew per organizer
   const [listedCrew] = await get(`/events/${listed.id}/crews`, noor)
   assert.deepEqual(
     [listedCrew.members, listedCrew.size, listedCrew.womenOnly, listedCrew.myStatus],
@@ -210,4 +197,20 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.equal(await status(`/events/${listed.id}`, json({}, sara, 'DELETE')), 204)
   assert.equal(await status(`/groups/${first.groupId}`), 404)
   assert.equal((await get('/events', hira)).length, 0)
+})
+
+test('profile and group photos: yours to change, anyone logged in can see them', async () => {
+  const [hira, zain] = [await loginAs('hira'), await loginAs('zain')] // Hira hosts tiny-game
+  const png = { image: 'data:image/png;base64,iVBORw0KGgo=' }
+  assert.equal(await status('/users/me/photo', json(png, hira, 'PUT')), 204)
+  assert.equal(
+    (await fetch(`${base}/users/hira/photo`, { headers: { cookie: zain } })).headers.get('content-type'),
+    'image/png',
+  )
+  assert.equal(await status('/users/zain/photo', { headers: { cookie: zain } }), 404) // no photo yet
+  assert.equal(await status('/groups/tiny-game/photo', json(png, zain, 'PUT')), 403) // not the host
+  assert.equal(await status('/groups/tiny-game/photo', json(png, hira, 'PUT')), 204)
+  assert.equal((await get('/groups/tiny-game')).hasPhoto, true)
+  assert.equal(await status('/users/me/photo', json({}, hira, 'DELETE')), 204)
+  assert.equal(await status('/users/hira/photo', { headers: { cookie: zain } }), 404)
 })

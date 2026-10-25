@@ -20,7 +20,7 @@ export default function GroupDetail() {
           {group.members} members · {group.location}
         </small>
       </div>
-      <p>Join this group to take part in its chats, activities, and shared tasks.</p>
+      <p>Join this group to take part in its chat.</p>
       <JoinAction id={group.id} />
       <Link className="button" to={'/posts/' + group.id}>
         View invitation →

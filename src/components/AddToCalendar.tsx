@@ -1,6 +1,6 @@
 import { Modal } from './UI'
 
-// "Add to calendar" for an event or activity someone is part of. Websites can't write to a calendar
+// "Add to calendar" for an event someone is going to. Websites can't write to a calendar
 // themselves, so this offers the two ways that work everywhere: Google Calendar, and an .ics file
 // that iPhone, Mac and Outlook open with their own "Add to calendar" screen.
 export type CalendarProps = { title: string; date: string; place: string; details: string; ics: string }
@@ -32,7 +32,7 @@ function Links(props: CalendarProps) {
   )
 }
 
-// Always there on a joined event or activity, for later.
+// Always there on an event's page, for later.
 export default function AddToCalendar(props: CalendarProps) {
   return (
     <div className="notice mint">

@@ -12,13 +12,15 @@ import { peopleRoutes } from './modules/people/people.routes.ts'
 import { notificationRoutes } from './modules/notifications/notifications.routes.ts'
 import { requestRoutes } from './modules/requests/requests.routes.ts'
 import { safetyRoutes } from './modules/safety/safety.routes.ts'
-import { workspaceRoutes } from './modules/workspace/workspace.routes.ts'
 
 // Builds the app without starting it, so tests can run it on a random port.
 export const app = express()
 
 // Screenshots and posters are bigger than anything else, so only those routes allow ~8 MB.
-app.use(['/api/events/suggest', '/api/events/:id/poster'], express.json({ limit: '8mb' }))
+app.use(
+  ['/api/events/suggest', '/api/events/:id/poster', '/api/users/me/photo', '/api/groups/:id/photo'],
+  express.json({ limit: '8mb' }),
+)
 app.use(express.json({ limit: '100kb' })) // reads JSON request bodies into req.body
 app.use(loadUser) // sets req.user when a valid session cookie is present
 
@@ -33,7 +35,6 @@ app.use('/api/groups', requestRoutes) // before groupRoutes: see requests.routes
 app.use('/api/groups', groupRoutes)
 app.use('/api', peopleRoutes)
 app.use('/api', chatRoutes)
-app.use('/api', workspaceRoutes)
 app.use('/api', safetyRoutes)
 app.use('/api', notFound)
 

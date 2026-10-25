@@ -3,7 +3,6 @@ import AppLayout from './components/AppLayout'
 import NotFound from './components/NotFound'
 import PostDetail from './pages/PostDetail'
 import GroupDetail from './pages/GroupDetail'
-import ActivityDetail from './pages/ActivityDetail'
 import UserDetail from './pages/UserDetail'
 import Discover from './pages/Discover'
 import Groups from './pages/Groups'
@@ -44,7 +43,6 @@ function Gate() {
         <Route path="me/edit" element={<ProfileSetup />} />
         <Route path="posts/:id" element={<PostDetail />} />
         <Route path="groups/:id" element={<GroupDetail />} />
-        <Route path="activities/:id" element={<ActivityDetail />} />
         <Route path="users/:id" element={<UserDetail />} />
         <Route path="events" element={<Events />} />
         <Route path="events/suggest" element={<SuggestEvent />} />

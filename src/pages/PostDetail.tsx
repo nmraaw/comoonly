@@ -19,12 +19,13 @@ export default function PostDetail() {
     <>
       <DetailHeader title="Find your people" fallback="/" />
       <Link className="person-button" to={'/users/' + group.ownerId}>
-        <Avatar name={group.owner} />
+        <Avatar id={group.ownerId} name={group.owner} />
         <span>
           <strong>{group.owner}</strong>
           <small>{group.location} · Organizer</small>
         </span>
       </Link>
+      {group.hasPhoto && <img className="event-poster" src={`/api/groups/${group.id}/photo`} alt="" />}
       <h1>{group.title}</h1>
       <div className="chips">
         <span className="chip selected">{group.category}</span>

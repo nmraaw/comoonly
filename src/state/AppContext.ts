@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { Group, Me, NewGroup, ProfileInput, Status } from '../types'
 
 // App-wide state every screen shares: who's logged in, the groups, your memberships and badges.
-// Screen-specific data (chat, activities, profiles) is loaded by that screen with useApi().
+// Screen-specific data (chat, profiles) is loaded by that screen with useApi().
 export type AppState = {
   me: Me | null | undefined // undefined = still checking, null = logged out
   signIn: (user: Me) => void

@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { photoVersion } from '../images'
 import Icon from './Icon'
 import wordmark from '../assets/brand/wordmark.svg'
 import pip from '../assets/brand/pip.svg'
@@ -33,14 +34,21 @@ export function Chips({
     </div>
   )
 }
-export function Avatar({ name }: { name: string }) {
+// A person's profile photo, or their initials if they haven't added one (or no `id` is known).
+// shortcut: asks for every person's photo and falls back on a 404; add a hasPhoto flag if that gets noisy.
+export function Avatar({ name, id }: { name: string; id?: string }) {
+  const [failed, setFailed] = useState(false)
   return (
     <span className="avatar" aria-hidden="true">
-      {name
-        .split(' ')
-        .map((s) => s[0])
-        .slice(0, 2)
-        .join('')}
+      {id && !failed ? (
+        <img src={`/api/users/${id}/photo?v=${photoVersion}`} alt="" onError={() => setFailed(true)} />
+      ) : (
+        name
+          .split(' ')
+          .map((s) => s[0])
+          .slice(0, 2)
+          .join('')
+      )}
     </span>
   )
 }

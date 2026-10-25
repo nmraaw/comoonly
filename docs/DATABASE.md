@@ -32,9 +32,6 @@ erDiagram
     groups ||--o{ group_members : "has"
     users ||--o{ saved_groups : "bookmarks"
     groups ||--o{ saved_groups : ""
-    groups ||--o{ activities : "plans"
-    activities ||--o{ rsvps : "going"
-    users ||--o{ rsvps : ""
     groups ||--o{ messages : "group chat"
     users ||--o{ messages : "writes / receives"
     users ||--o{ notifications : "gets"
@@ -105,15 +102,6 @@ erDiagram
         text author_id FK
         text text "1–1000 chars"
     }
-    activities {
-        text id PK
-        text group_id FK
-        text title
-        text starts_at
-        text place
-        text plan
-        text notes
-    }
     events {
         text id PK
         text title
@@ -142,7 +130,7 @@ erDiagram
     }
 ```
 
-Not drawn, to keep it readable: `sessions`, `saved_groups`, `rsvps`, `blocks` (simple two-key link
+Not drawn, to keep it readable: `sessions`, `saved_groups`, `user_photos`, `group_photos`, `blocks` (simple two-key link
 tables) and `seen_posts` (Instagram post ids the reader already checked).
 
 ## Design decisions
@@ -171,8 +159,8 @@ links between tables are foreign keys with `PRAGMA foreign_keys = ON`. `server/t
 proves invalid data is rejected even if server code had a bug.
 
 **Deleting is deliberate.** `ON DELETE CASCADE` removes things that only make sense with their parent
-(a group's chat and activities). `ON DELETE SET NULL` keeps history: an event stays when the
-person who suggested it leaves, and an activity stays when its creator does.
+(a group's chat and members). `ON DELETE SET NULL` keeps history: an event stays when the
+person who suggested it leaves.
 
 **Times have one format each.** Moments the server records (`created_at`, `expires_at`) are integers in
 milliseconds: easy to compare and sort. Dates people type (`starts_at`, `deadline`) are ISO text such as
@@ -196,6 +184,7 @@ friendly message; the database constraints are the last line of defence.
 | `users` | a person | they're deleted (cascades to almost everything they own) |
 | `user_interests` | one interest of one person | profile is re-saved / person deleted |
 | `event_going` | one person going to one event, and how (looking for company, happy to meet, with friends) | they're not going any more / event deleted |
+| `user_photos` / `group_photos` | a profile photo / a group's photo or poster | person or group deleted / replaced |
 | `event_posters` | an event's poster picture | event deleted / poster replaced |
 | `sessions` | one logged-in browser | logout, expiry, person deleted |
 | `email_codes` | the 6-digit sign-up code waiting to be entered (hashed) | entered, replaced by a new one, person deleted |
@@ -203,7 +192,6 @@ friendly message; the database constraints are the last line of defence.
 | `groups` | a small group, an event's "everyone going" group, or a crew (`event_id` set; `women_only` kept by a trigger) | host deleted |
 | `group_members` | someone in, waiting for, or declined from a group | they leave / cancel |
 | `saved_groups` | a bookmark | un-saved |
-| `activities` / `rsvps` | a plan in a group / someone going to it | group deleted / un-RSVP |
 | `messages` | one chat message (group or private) | group or either person deleted |
 | `notifications` | one notice for one person | read and older than 60 days |
 | `events` | a found, suggested or added event | drafts: when the date or deadline passes; rejected: after 30 days; published: kept |

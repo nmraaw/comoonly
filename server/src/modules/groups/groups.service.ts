@@ -6,7 +6,8 @@ import type { CreateGroupInput, ListQuery } from './groups.schema.ts'
 // One query shape for list and detail, so both return exactly the frontend's GroupPreview.
 const SELECT = `
   SELECT g.*, u.name AS owner, COUNT(m.user_id) AS members,
-    g.event_id IS NOT NULL OR EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id) AS forEvent
+    g.event_id IS NOT NULL OR EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id) AS forEvent,
+    EXISTS (SELECT 1 FROM group_photos p WHERE p.group_id = g.id) AS hasPhoto
   FROM groups g
   JOIN users u ON u.id = g.owner_id
   LEFT JOIN group_members m ON m.group_id = g.id AND m.status = 'joined'`
@@ -47,6 +48,7 @@ function toPreview(row: any) {
     forEvent: Boolean(row.forEvent), // an event's "everyone going" group or one of its crews
     crewFor: row.event_id as string | null, // a crew: the event it's going to
     womenOnly: Boolean(row.women_only),
+    hasPhoto: Boolean(row.hasPhoto),
   }
 }
 
@@ -79,7 +81,7 @@ export function getGroup(id: string) {
   return row ? toPreview(row) : undefined
 }
 
-// Used by every members-only feature (members list, chat, activities, to-dos).
+// Used by every members-only feature (members list, chat).
 export function requireMember(groupId: string, userId: string) {
   const group = getGroup(groupId)
   if (!group) throw new HttpError(404, 'Group not found')

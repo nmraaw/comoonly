@@ -36,7 +36,7 @@ export default function Groups() {
         label="Your groups"
         values={[`Active · ${count('joined')}`, `Requests · ${count('pending')}`]}
         value={`${view} · ${count(view === 'Active' ? 'joined' : 'pending')}`}
-        onChange={(v) => setParams(v.startsWith('Requests') ? { view: 'requests' } : {})}
+        onChange={(v) => setParams(v.startsWith('Requests') ? { view: 'requests' } : {}, { replace: true })}
       />
       <div className="stack">
         {groups
