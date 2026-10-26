@@ -47,21 +47,36 @@ const tables = (from.prepare("SELECT name FROM sqlite_master WHERE type = 'table
 const unknown = tables.filter((t) => !ORDER.includes(t))
 if (unknown.length) throw new Error(`Not in the copy order, add them first: ${unknown.join(', ')}`)
 
+// Big pictures over a slow line sometimes drop the connection: try each row again (OR REPLACE above makes a
+// retry of a row that did arrive harmless).
+function retry(work: () => unknown) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return work()
+    } catch (err) {
+      if (attempt >= 5 || !/Hrana\(Http|connection|timed out/i.test(String(err))) throw err
+      console.log(`  connection dropped, trying again (${attempt}/4)`)
+    }
+  }
+}
+
 const columns = (database: DatabaseSync, table: string) =>
   (database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
 
 for (const table of ORDER.filter((t) => tables.includes(t))) {
   const shared = columns(from, table).filter((c) => columns(to, table).includes(c))
-  const insert = to.prepare(`INSERT INTO ${table} (${shared.join(', ')}) VALUES (${shared.map(() => '?').join(', ')})`)
+  const insert = to.prepare(
+    `INSERT OR REPLACE INTO ${table} (${shared.join(', ')}) VALUES (${shared.map(() => '?').join(', ')})`,
+  )
   const rows = from.prepare(`SELECT ${shared.join(', ')} FROM ${table}`).all() as Record<string, unknown>[]
   for (const row of rows) {
     const values = shared.map((c) => (table === 'events' && c === 'group_id' ? null : row[c]))
-    insert.run(...(values as any[]))
+    retry(() => insert.run(...(values as any[])))
   }
   console.log(`${table}: ${rows.length}`)
 }
 const links = from.prepare('SELECT id, group_id FROM events WHERE group_id IS NOT NULL').all() as any[]
-for (const e of links) to.prepare('UPDATE events SET group_id = ? WHERE id = ?').run(e.group_id, e.id)
+for (const e of links) retry(() => to.prepare('UPDATE events SET group_id = ? WHERE id = ?').run(e.group_id, e.id))
 
 // Check: same number of rows everywhere, and pictures and voice notes byte for byte the same size.
 const problems = tables.filter((t) => count(from, t) !== count(to, t))
