@@ -1,11 +1,32 @@
 # Comoonly
 
-Small groups, actual plans. Find people nearby who want to do the same thing, ask to join their group,
-then chat, plan activities and share to-dos together. An event finder collects upcoming events
-(hackathons, workshops, competitions) so people can find others to go with.
+Find your kind of people, and go to things together. Comoonly shows real events happening in Pakistan
+(found by an AI event finder from Instagram and event sites, checked by an admin) and helps people who'd
+go if someone came with them: say how you're going, join the event's general chat, or go in a **crew**:
+2 to 5 verified people who meet up first and arrive together. Small interest groups work the same way.
 
-- **Frontend:** React + Vite (`src/`)
-- **Backend:** Node.js + Express, TypeScript run directly by Node (no build step), built-in SQLite, Zod (`server/`)
+**Live app:** https://comoonly.onrender.com (admin: `/admin/`). Sign up with your email (a 6-digit code
+is emailed), fill in your profile, then open an event on Discover.
+
+**What it does**
+- **Events:** posters, when and where, countdown, official registration link, add to calendar, share.
+- **Going together:** "looking for company / happy to meet / with my friends", a general chat per event,
+  and crews with an organizer who accepts people. **Women-only crews** for verified women.
+- **Trust and safety:** email-verified sign-up, ✓ Verified profiles (photo, bio, Instagram/TikTok),
+  message requests from strangers (one message until accepted), block and report, password reset.
+- **Chat:** private chats, group and crew chats, **voice messages**.
+- **AI event finder:** reads Instagram (official API: hashtags and chosen accounts) and event sites; Google
+  Gemini turns posts and posters into events. Nothing goes live until an admin approves it. Anyone can
+  suggest an event from a link, caption or screenshot.
+- **Admin:** dashboard (people, events, reports, backup), review queue, posters, deleting events.
+
+**Built with**
+- **Frontend:** React + Vite + TypeScript (`src/`), mobile first.
+- **Backend:** Node.js 24 + Express, TypeScript run directly by Node, Zod validation (`server/`).
+- **Database:** SQLite with versioned migrations, foreign keys, CHECK rules and a trigger
+  ([docs/DATABASE.md](docs/DATABASE.md)). Locally a file; online the same SQLite hosted on Turso.
+- **Hosting:** Render (free) + Turso (free); email through a Gmail Apps Script relay.
+- **Tests:** 27 API and database tests, run on both SQLite libraries (`npm test`, `npm run test:libsql`).
 
 ## Run it on your computer
 
@@ -18,7 +39,8 @@ npm run server            # backend on http://localhost:3001 (restarts when you 
 npm run dev               # in a second terminal: the website, opens on http://localhost:5173
 ```
 
-Open the website, sign up, and create your profile. The database is the file `server/data/comoonly.db`;
+Open the website, sign up, and create your profile (without email settings, sign-up codes are printed in the
+backend's log). The database is the file `server/data/comoonly.db`;
 delete it to start fresh. To try the app with sample people and groups instead, start the backend with
 `SEED_DEMO=1 npm run server` on an empty database (every sample person's password is `comoonly-demo`).
 
@@ -32,7 +54,7 @@ npm run lint
 ```
 server/src/
   index.ts  app.ts  config.ts      start the server, wire features together, settings
-  db/                              connection, schema.sql (all tables), seed (sample data)
+  db/                              connection (local SQLite or Turso), migrations/ (all tables), seed (sample data)
   middleware/                      login check, error handling
   modules/<feature>/               one folder per feature:
     *.routes.ts                    HTTP only: read request, call service, send response
@@ -40,12 +62,14 @@ server/src/
     *.schema.ts                    what valid input looks like (Zod)
 ```
 
-Features: `auth` (sign up, log in), `people` (profiles, connections), `groups` (feed, create, saved),
-`requests` (ask to join, host accepts/declines), `chat` (group and private messages),
-`workspace` (activities, to-dos), `events` (event finder, review queue, "find people to go with").
+Features: `auth` (sign up with email code, log in, password reset), `people` (profiles, socials, connections),
+`groups` (feed, create, saved, photos), `requests` (ask to join, host accepts/declines), `chat` (private,
+group and crew chats, voice messages), `events` (event finder, review queue, going, crews), `notifications`,
+`safety` (block, report), `admin`. Pictures and voice notes: `server/src/photos.ts`.
 
 The frontend reaches the backend through `src/api.ts`. Shared app state (who's logged in, groups,
-memberships) lives in `src/state/MockProvider.tsx`; each screen loads its own data with `useApi()`.
+memberships) lives in `src/state/AppProvider.tsx`; each screen loads its own data with `useApi()`.
+New to the code? Start with **[docs/Comoonly code guide.pdf](docs/Comoonly%20code%20guide.pdf)**.
 
 ## Event finder
 
@@ -95,6 +119,9 @@ It is tested against a stand-in for Meta's API, not the real one yet: expect sma
 
 ## Put it online
 
-Step-by-step for GitHub and free hosting from your Mac (Tailscale Funnel), how to use
-your admin tools, and where users' data is stored: **[docs/RUNNING.md](docs/RUNNING.md)**.
-The data model and its design decisions: **[docs/DATABASE.md](docs/DATABASE.md)**.
+- **Render + Turso (free, how the live app runs):** [docs/DEPLOY_RENDER_TURSO.md](docs/DEPLOY_RENDER_TURSO.md),
+  with the checklist and rollback plan; email: [docs/GMAIL_RELAY.md](docs/GMAIL_RELAY.md).
+- **From your own Mac (Tailscale Funnel), admin tools, where data is stored:** [docs/RUNNING.md](docs/RUNNING.md).
+- **The data model and its design decisions:** [docs/DATABASE.md](docs/DATABASE.md).
+
+Secrets (API keys, tokens) live only in `.env` locally and in Render's settings, never in the code.
