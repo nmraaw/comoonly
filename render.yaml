@@ -6,7 +6,7 @@ services:
     name: comoonly
     runtime: node
     plan: free
-    region: frankfurt # pick the Turso database region closest to this
+    region: singapore # closest Render region to the Turso database (Tokyo)
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health

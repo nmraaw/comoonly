@@ -47,9 +47,9 @@ Tick each step. **Steps marked 🛑 wait for your approval.**
 - [ ] D1. Pick a quiet time. Tell beta users the app will pause for ~15 minutes.
 - [ ] D2. Stop the Mac app, so nobody writes while copying.
 - [ ] D3. Make a backup copy of `server/data/comoonly.db` (kept on your Mac; it's the rollback).
-- [ ] D4. Make one clean copy of the database for upload and record its schema version in it (Turso doesn't allow the built-in version number to be changed, so the app keeps it in a small `_schema_version` table).
-- [ ] D5. Upload that copy into the Turso database (Turso's "create database from file" / import).
-- [ ] D6. Check counts in Turso match the Mac copy: people, events, posters, messages.
+- [ ] D4. Make one clean copy of the database (`VACUUM INTO`), with the app stopped.
+- [ ] D5. Copy it into the (empty) Turso database: `node --env-file=<Turso settings> server/scripts/copy-to-turso.ts <copy.db>`. It creates the tables, copies every row, and checks counts and picture sizes match. It refuses to run if Turso already has people in it.
+- [ ] D6. The script's last line must say "All … tables match". Anything else: stop, nothing is switched yet.
 - [ ] D7. Start the Mac app again (still the live link until step F).
 
 ### E. 🛑 Deploy on Render (only after your approval)
