@@ -117,11 +117,4 @@ To switch it on (Meta changes these screens often, so follow their current docs 
 It then runs with the rest of the event finder (every 12 hours in production, or **Find new events**).
 It is tested against a stand-in for Meta's API, not the real one yet: expect small fixes on first real use.
 
-## Put it online
 
-- **Render + Turso (free, how the live app runs):** [docs/DEPLOY_RENDER_TURSO.md](docs/DEPLOY_RENDER_TURSO.md),
-  with the checklist and rollback plan; email: [docs/GMAIL_RELAY.md](docs/GMAIL_RELAY.md).
-- **From your own Mac (Tailscale Funnel), admin tools, where data is stored:** [docs/RUNNING.md](docs/RUNNING.md).
-- **The data model and its design decisions:** [docs/DATABASE.md](docs/DATABASE.md).
-
-Secrets (API keys, tokens) live only in `.env` locally and in Render's settings, never in the code.
