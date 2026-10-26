@@ -15,14 +15,15 @@ const today = () => {
   return `${new Date().toLocaleDateString('en-GB', { ...zone, weekday: 'long' })} ${new Date().toLocaleDateString('en-CA', zone)}`
 }
 
-const prompt = () => `Today is ${today()} in Pakistan. You extract upcoming events (events, hackathons, workshops,
+const prompt = () => `Today is ${today()} in Pakistan. You extract events (events, hackathons, workshops,
 competitions) from a web page or a social media post. Reply with ONLY a JSON array, no other text. Each item:
 {"title": string, "date": ISO 8601 start date-time, "city": string ("" if online),
  "mode": "In person" | "Online" | "Hybrid", "category": "Hackathon" | "Workshop" | "Competition" | "Meetup" | "Event",
  "description": a short summary under 300 characters using only facts in the post, "registerUrl": the official registration link as a full URL or "",
  "deadline": last day to register as YYYY-MM-DD, or "" if not stated,
  "country": the country it takes place in (for online events, the organizer's country), or "" if unclear}
-A date without a year means its next occurrence after today. Only include events that are really there.
+A date without a year means its next occurrence after today. Include events that are already over too (the app checks
+the dates itself). Only include events that are really there.
 Never invent links or dates. Reply [] if there are none.`
 
 // Sends text (and optionally an image) to the configured AI and returns the events it found.
@@ -153,5 +154,6 @@ export async function eventsFromPost(
   // The post's picture becomes the event's poster, so people see it in the app.
   const ids = events.map((e) => saveEvent(e, 'draft', suggestedBy)).filter((id) => id !== false)
   if (post.image) for (const id of ids) savePoster(id, post.image)
-  return { found: events.length, added: ids.length }
+  // `over`: events the post really has, but already over (or registration closed), so people get a clear answer.
+  return { found: events.length, added: ids.length, over: candidates.length - events.length }
 }

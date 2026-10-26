@@ -15,7 +15,7 @@ export default function SuggestEvent() {
     setNote('')
     try {
       const image = file?.size ? await shrink(file) : undefined
-      const r = await api<{ found: number; added: number }>('/events/suggest', {
+      const r = await api<{ found: number; added: number; over: number }>('/events/suggest', {
         method: 'POST',
         body: { postUrl: data.get('postUrl'), account: data.get('account'), text: data.get('text'), image },
       })
@@ -26,7 +26,9 @@ export default function SuggestEvent() {
         setNote(
           r.found
             ? 'We already have this one. Thank you!'
-            : 'We couldn’t find an upcoming event with open registration in that post. Try adding a screenshot of the poster.',
+            : r.over
+              ? 'We read the post, but that event is already over (or its registration has closed), so it isn’t added.'
+              : 'We couldn’t find an event in that post. Try adding a screenshot of the poster.',
         )
     } catch (err) {
       setNote((err as Error).message)

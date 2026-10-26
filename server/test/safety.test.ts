@@ -114,7 +114,11 @@ test('suggest an event: AI reads the post, result waits for review; closed or pa
     assert.equal(await status('/events/suggest', json({ postUrl: post.postUrl }, hira)), 503)
     assert.equal(await status('/events/suggest', json({ postUrl: 'https://tiktok.test/x' }, hira)), 400) // other links need more
     assert.equal(await status('/events/suggest', json({ ...post, image: 'data:text/html;base64,AA' }, hira)), 400)
-    assert.deepEqual(await (await fetch(`${base}/events/suggest`, json(post, hira))).json(), { found: 1, added: 1 })
+    assert.deepEqual(await (await fetch(`${base}/events/suggest`, json(post, hira))).json(), {
+      found: 1,
+      added: 1,
+      over: 2, // registration closed, and the far-future guess
+    })
     assert.match(asked, /Today is \w+day \d{4}-\d{2}-\d{2} in Pakistan/) // weekday + date: "this Friday", "Sat 2 Nov"
     const draft = (await get('/events/review', sara)).find((e: { title: string }) => e.title === 'Lahore Startup Mixer')
     assert.equal(draft.registerUrl, post.postUrl) // no link on the poster: the post itself is used
