@@ -15,6 +15,7 @@ import {
 } from './events.service.ts'
 import { eventsFromPost } from './events.ai.ts'
 import { scanSources } from './events.finder.ts'
+import { findPost } from './events.instagram.ts'
 import { sendIcs } from '../../calendar.ts'
 import { sendPhoto } from '../../photos.ts'
 
@@ -73,7 +74,9 @@ eventRoutes.post('/suggest', requireAuth, async (req: any, res) => {
   if (!req.user.isAdmin && current.count >= 10)
     throw new HttpError(429, 'That’s 10 suggestions today. Thank you! Try again tomorrow.')
   suggestions.set(req.user.id, { ...current, count: current.count + 1 })
-  res.json(await eventsFromPost(post, req.user.id))
+  // Only an Instagram link: read the post itself through Instagram's API.
+  const filled = post.text || post.image ? post : { ...post, ...(await findPost(post.postUrl, post.account)) }
+  res.json(await eventsFromPost(filled, req.user.id))
 })
 
 // ----- Admin only: review queue. Nothing is published without a person approving it. -----

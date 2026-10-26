@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import './helpers.ts' // fresh in-memory database
 import { config } from '../src/config.ts'
 import { db } from '../src/db/connection.ts'
-import { limits, looksLikeEvent, scanInstagram } from '../src/modules/events/events.instagram.ts'
+import { findPost, limits, looksLikeEvent, scanInstagram } from '../src/modules/events/events.instagram.ts'
 import { saveEvent } from '../src/modules/events/events.service.ts'
 
 const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
@@ -101,9 +101,10 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
     const lists = { hashtags: ['lahoreevents'], accounts: ['someorganizer'] }
     const first = await scanInstagram(lists)
     assert.deepEqual(first, [
-      // p1 only (p2 isn't an event, p3 is old): its Lahore events are kept, the Mumbai one is dropped
-      { source: 'Instagram #lahoreevents', via: 'Instagram API', found: 2, added: 2 },
+      // Chosen accounts first, then hashtags. p1 only from the hashtag (p2 isn't an event, p3 is old);
+      // Lahore events are kept, the Mumbai one is dropped.
       { source: 'Instagram @someorganizer', via: 'Instagram API', found: 2, added: 2 },
+      { source: 'Instagram #lahoreevents', via: 'Instagram API', found: 2, added: 2 },
     ])
     assert.equal(aiCalls, 2)
     // p1's picture became the poster of its 2 events; p4 is a video, so its events have none.
@@ -135,8 +136,15 @@ test('Instagram reader: only fresh, event-like, unseen posts reach the AI', asyn
       timestamp: ago(1),
     })
     const capped = await scanInstagram(lists)
-    assert.match(capped[0].error ?? '', /daily limit of 10/)
+    assert.match(capped.find((r) => r.error)?.error ?? '', /daily limit of 10/)
     assert.equal(aiCalls, 2) // unchanged: p5 waits for a later run
+
+    // "Suggest an event" with only a link: the post is found among the account's recent posts.
+    const found = await findPost('https://www.instagram.com/p/4/?igsh=abc', '@someorganizer')
+    assert.equal(found.text, 'Meetup on 3rd, tickets inside')
+    await assert.rejects(findPost('https://www.instagram.com/p/4/'), /@name/) // no account anywhere
+    await assert.rejects(findPost('https://www.instagram.com/p/nope/', 'someorganizer'), /recent posts/)
+    assert.equal((await findPost('https://www.instagram.com/someorganizer/p/4/')).text, 'Meetup on 3rd, tickets inside')
 
     config.instagram.token = ''
     assert.deepEqual(await scanInstagram(lists), []) // not set up → quietly does nothing

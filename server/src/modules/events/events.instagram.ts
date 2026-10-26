@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { config } from '../../config.ts'
 import { db } from '../../db/connection.ts'
+import { HttpError } from '../../middleware/errors.ts'
 import { eventsFromPost } from './events.ai.ts'
 
 // Reads Instagram through Meta's official API, never by scraping:
@@ -52,6 +53,32 @@ async function hashtagPosts(tag: string): Promise<Post[]> {
   return posts
 }
 
+// "Suggest an event" with only a link: find that post among the account's recent posts (official API, so it
+// works for business and creator accounts, which nearly all organizers, venues and brands are).
+// The account comes from the link (instagram.com/<account>/p/…) or is typed in next to it.
+export async function findPost(postUrl: string, account = '') {
+  if (!config.instagram.token) throw new HttpError(503, 'Reading Instagram links isn’t switched on: add a screenshot')
+  const path = new URL(postUrl).pathname.split('/').filter(Boolean)
+  const at = path.findIndex((part) => ['p', 'reel', 'reels', 'tv'].includes(part))
+  const code = at >= 0 ? path[at + 1] : ''
+  const username = account.replace(/^@/, '').trim() || (at > 0 ? path[at - 1] : '')
+  if (!code) throw new HttpError(400, 'That doesn’t look like a link to an Instagram post')
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(username))
+    throw new HttpError(400, 'Add the account’s @name (it isn’t in the link), or a screenshot of the post')
+  const fields = `business_discovery.username(${username}){media.limit(50){${FIELDS},thumbnail_url}}`
+  const result = await graph(config.instagram.userId, { fields }).catch(() => {
+    throw new HttpError(
+      400,
+      `Couldn’t read @${username}: it must be a business or creator account. Add a screenshot instead.`,
+    )
+  })
+  const post = (result.business_discovery?.media?.data ?? []).find((p: any) => p.permalink?.includes(`/${code}`))
+  if (!post)
+    throw new HttpError(400, `That post isn’t among @${username}’s recent posts. Check the @name, or add a screenshot.`)
+  const picture = post.media_type === 'VIDEO' ? post.thumbnail_url : post.media_url
+  return { text: post.caption ?? '', image: await asDataUrl(picture).catch(() => undefined) }
+}
+
 async function accountPosts(username: string): Promise<Post[]> {
   const fields = `business_discovery.username(${username}){media.limit(15){${FIELDS}}}`
   const result = await graph(config.instagram.userId, { fields })
@@ -98,9 +125,10 @@ export async function scanInstagram(lists?: InstagramLists) {
   }
   const { hashtags, accounts } = chosen
   const sources = [
+    // Accounts you chose come first, so the 10-a-day limit isn't used up by hashtags before reaching them.
+    ...accounts.map((user) => ({ name: `Instagram @${user}`, load: () => accountPosts(user) })),
     // Instagram allows 30 different hashtags per account per 7 days, so only the first 30 in the list are used.
     ...hashtags.slice(0, 30).map((tag) => ({ name: `Instagram #${tag}`, load: () => hashtagPosts(tag) })),
-    ...accounts.map((user) => ({ name: `Instagram @${user}`, load: () => accountPosts(user) })),
   ]
   const report = []
   let aiCalls = 0

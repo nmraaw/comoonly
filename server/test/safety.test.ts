@@ -110,7 +110,9 @@ test('suggest an event: AI reads the post, result waits for review; closed or pa
   try {
     const [sara, hira] = [await loginAs('sara'), await loginAs('hira')] // Hira is a regular user
     const post = { postUrl: 'https://www.instagram.com/p/abc123/', text: 'Startup mixer this Friday!' }
-    assert.equal(await status('/events/suggest', json({ postUrl: post.postUrl }, hira)), 400) // no caption or image
+    // An Instagram link alone is read through Instagram's API, which isn't set up in tests
+    assert.equal(await status('/events/suggest', json({ postUrl: post.postUrl }, hira)), 503)
+    assert.equal(await status('/events/suggest', json({ postUrl: 'https://tiktok.test/x' }, hira)), 400) // other links need more
     assert.equal(await status('/events/suggest', json({ ...post, image: 'data:text/html;base64,AA' }, hira)), 400)
     assert.deepEqual(await (await fetch(`${base}/events/suggest`, json(post, hira))).json(), { found: 1, added: 1 })
     assert.match(asked, /Today is \w+day \d{4}-\d{2}-\d{2} in Pakistan/) // weekday + date: "this Friday", "Sat 2 Nov"

@@ -45,8 +45,12 @@ export const suggestSchema = z
     postUrl: httpUrl,
     text: z.string().trim().max(5000).default(''),
     image: imageSchema.optional(),
+    account: z.string().trim().max(31).default(''), // Instagram @name, for a link alone (see findPost)
   })
-  .refine((p) => p.text || p.image, { message: 'We can’t open the link itself: add a screenshot of the post, or paste its caption', path: ['text'] })
+  .refine((p) => p.text || p.image || /instagram\.com\//i.test(p.postUrl), {
+    message: 'For links outside Instagram, add a screenshot of the post or paste its caption',
+    path: ['text'],
+  })
 
 // An admin adding or changing an event's poster.
 export const posterSchema = photoSchema

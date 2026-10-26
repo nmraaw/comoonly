@@ -17,7 +17,7 @@ export default function SuggestEvent() {
       const image = file?.size ? await shrink(file) : undefined
       const r = await api<{ found: number; added: number }>('/events/suggest', {
         method: 'POST',
-        body: { postUrl: data.get('postUrl'), text: data.get('text'), image },
+        body: { postUrl: data.get('postUrl'), account: data.get('account'), text: data.get('text'), image },
       })
       if (r.added) {
         setDone(true)
@@ -56,8 +56,8 @@ export default function SuggestEvent() {
         worth going to?
       </h1>
       <p>
-        Share an event from Instagram, TikTok or anywhere else. Apps can’t read a post from its link, so add a
-        screenshot of the post (easiest) or paste its caption, or both.
+        Share an event from Instagram, TikTok or anywhere else. For Instagram, the link and the account’s @name are
+        enough. For other sites, add a screenshot of the post or paste its caption.
       </p>
       <form
         onSubmit={(e) => {
@@ -70,11 +70,16 @@ export default function SuggestEvent() {
           <input name="postUrl" type="url" required placeholder="https://www.instagram.com/p/…" />
         </label>
         <label>
-          Caption (or add a screenshot below)
+          Instagram account (if the link doesn’t show it)
+          <input name="account" maxLength={31} placeholder="@organizer" autoCapitalize="none" />
+        </label>
+        <p className="hint">Works for business and creator accounts, like most brands, venues and organizers.</p>
+        <label>
+          Caption (optional for Instagram)
           <textarea name="text" maxLength={5000} placeholder="Paste the post’s text here" />
         </label>
         <label>
-          Screenshot of the post (or paste the caption above)
+          Screenshot of the post (optional for Instagram)
           <input name="image" type="file" accept="image/png,image/jpeg,image/webp" />
         </label>
         {note && (
