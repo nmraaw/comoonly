@@ -28,6 +28,10 @@ export const config = {
   email: {
     user: process.env.EMAIL_USER ?? '',
     pass: process.env.EMAIL_APP_PASSWORD ?? '',
+    // On Render's free plan email ports are blocked, so mail goes through a small Google Apps Script in your
+    // Gmail instead (docs/GMAIL_RELAY.md): its web-app address and the shared secret written in it.
+    relayUrl: process.env.EMAIL_RELAY_URL ?? '',
+    relaySecret: process.env.EMAIL_RELAY_SECRET ?? '',
   },
   // The AI that reads event posts and pages without structured data. Any OpenAI-compatible endpoint works:
   // Google Gemini's free tier is the default in .env.example; Groq or Ollama also work. Empty = AI off.

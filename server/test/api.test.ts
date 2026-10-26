@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { base, get, json, loginAs, status } from './helpers.ts'
-import { outbox } from '../src/email.ts'
+import { createServer } from 'node:http'
+import { outbox, sendEmail } from '../src/email.ts'
 import { config } from '../src/config.ts'
 
 test('feed returns seeded groups in the frontend shape, with filters and sorting', async () => {
@@ -98,6 +99,26 @@ test('signup, create a group, logout, delete account', async () => {
   config.email.user = ''
 })
 
+test('forgot password: a code by email, a new password, and other devices logged out', async () => {
+  config.email.user = 'comoonly@gmail.test' // email "set up" (messages still land in `outbox` here)
+  const old = await loginAs('noor')
+  assert.equal(await status('/auth/forgot', json({ email: 'nobody@example.com' })), 204) // doesn't reveal accounts
+  assert.equal(await status('/auth/forgot', json({ email: 'noor@comoonly.test' })), 204)
+  const code = outbox.findLast((m) => m.to === 'noor@comoonly.test')!.text.match(/\d{6}/)![0]
+  const reset = (c: string, password = 'brand-new-pass') =>
+    fetch(`${base}/auth/reset`, json({ email: 'noor@comoonly.test', code: c, password }))
+  assert.equal((await reset(code, 'short')).status, 400) // new password too short
+  assert.equal((await reset(code === '000000' ? '111111' : '000000')).status, 400) // wrong code
+  const done = await reset(code)
+  assert.equal(done.status, 200)
+  assert.ok(done.headers.get('set-cookie')) // logged in here
+  assert.equal(await status('/auth/me', { headers: { cookie: old } }), 401) // the old device is logged out
+  assert.equal(await status('/auth/login', json({ email: 'noor@comoonly.test', password: 'comoonly-demo' })), 401)
+  assert.equal(await status('/auth/login', json({ email: 'noor@comoonly.test', password: 'brand-new-pass' })), 200)
+  assert.equal((await reset(code)).status, 400) // a code works once
+  config.email.user = ''
+})
+
 test('without email set up, people get straight in; admin emails still need the code', async () => {
   const signup = await fetch(
     `${base}/auth/signup`,
@@ -166,4 +187,28 @@ test('profiles: edit your own, view anyone’s without their email', async () =>
   assert.equal(await status('/users/me', json({ ...profile, instagram: 'javascript:alert(1)' }, hira, 'PATCH')), 400)
   const shown = await get('/users/hira', await loginAs('zain'))
   assert.deepEqual([shown.instagram, typeof shown.joinedAt, typeof shown.events], ['hira.makes', 'number', 'number'])
+})
+
+test('email goes through the Gmail relay when it is set up, with its secret', async () => {
+  let got: any
+  const relay = createServer((req, res) => {
+    let body = ''
+    req
+      .on('data', (c) => (body += c))
+      .on('end', () => {
+        got = JSON.parse(body)
+        res.end(got.secret === 's3cret' ? 'ok' : 'wrong secret')
+      })
+  }).listen(0)
+  const port = (relay.address() as { port: number }).port
+  Object.assign(config.email, { relayUrl: `http://localhost:${port}`, relaySecret: 's3cret' })
+  try {
+    await sendEmail('a@b.test', 'Hi', 'Body')
+    assert.deepEqual(got, { secret: 's3cret', to: 'a@b.test', subject: 'Hi', text: 'Body' })
+    config.email.relaySecret = 'nope'
+    await assert.rejects(sendEmail('a@b.test', 'Hi', 'Body'), /wrong secret/) // a failed send is an error, not silence
+  } finally {
+    Object.assign(config.email, { relayUrl: '', relaySecret: '' })
+    relay.close()
+  }
 })

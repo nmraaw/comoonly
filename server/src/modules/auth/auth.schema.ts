@@ -29,5 +29,9 @@ export const deleteAccountSchema = z.object({
 })
 
 export type SignupInput = z.infer<typeof signupSchema>
+// Forgot password: the email asks for a code; then the code and a new password reset it.
+export const forgotSchema = z.object({ email })
+export const resetSchema = verifySchema.extend({ password: signupSchema.shape.password })
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type VerifyInput = z.infer<typeof verifySchema>

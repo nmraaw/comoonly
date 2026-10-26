@@ -1,7 +1,23 @@
 import { Router } from 'express'
 import { clearSessionCookie, requireAuth, setSessionCookie } from '../../middleware/auth.ts'
-import { deleteAccountSchema, loginSchema, signupSchema, verifySchema } from './auth.schema.ts'
-import { createSession, deleteAccount, endSession, login, signup, verify } from './auth.service.ts'
+import {
+  deleteAccountSchema,
+  forgotSchema,
+  loginSchema,
+  resetSchema,
+  signupSchema,
+  verifySchema,
+} from './auth.schema.ts'
+import {
+  createSession,
+  deleteAccount,
+  endSession,
+  forgotPassword,
+  login,
+  resetPassword,
+  signup,
+  verify,
+} from './auth.service.ts'
 
 export const authRoutes = Router()
 
@@ -25,6 +41,18 @@ authRoutes.post('/login', async (req, res) => {
   if ('needsCode' in result) return res.status(202).json(result)
   setSessionCookie(res, createSession(result.id))
   res.json(result)
+})
+
+// Forgot password: always "sent" (204), whether or not the email has an account.
+authRoutes.post('/forgot', async (req, res) => {
+  await forgotPassword(forgotSchema.parse(req.body).email)
+  res.status(204).end()
+})
+
+authRoutes.post('/reset', (req, res) => {
+  const user = resetPassword(resetSchema.parse(req.body))
+  setSessionCookie(res, createSession(user.id))
+  res.json(user)
 })
 
 authRoutes.post('/logout', (req: any, res) => {

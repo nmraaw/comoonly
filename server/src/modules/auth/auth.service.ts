@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomInt, randomUUID, scryptSync, timingSafeE
 import { db, transaction } from '../../db/connection.ts'
 import { config } from '../../config.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { sendEmail } from '../../email.ts'
+import { emailIsSetUp, sendEmail } from '../../email.ts'
 import type { LoginInput, SignupInput, VerifyInput } from './auth.schema.ts'
 
 // Passwords are never stored. We keep "salt:hash"; the random salt makes equal passwords look different.
@@ -95,7 +95,7 @@ export async function signup(input: SignupInput) {
 // Until Gmail is set up (.env EMAIL_USER), codes can't reach people, so only admin emails need one
 // (read it in the server log): that still stops anyone claiming an admin's email.
 // shortcut: anyone can sign up as anyone else's (non-admin) email meanwhile; set up email before launch.
-const needsCode = (email: string) => Boolean(config.email.user) || config.adminEmails.includes(email)
+const needsCode = (email: string) => emailIsSetUp() || config.adminEmails.includes(email)
 
 const sha256 = (code: string) => createHash('sha256').update(code).digest('hex')
 
@@ -113,7 +113,7 @@ async function sendCode(userId: string, email: string) {
   await sendEmail(
     email,
     `${code} is your Comoonly code`,
-    `Your Comoonly code is ${code}\n\nIt works for 15 minutes. If you didn't sign up, ignore this email.`,
+    `Your Comoonly code is ${code}\n\nIt works for 15 minutes. If you didn't ask for it, ignore this email.`,
   )
 }
 
@@ -137,6 +137,21 @@ export function verify({ email, password, code }: VerifyInput) {
     db.prepare('DELETE FROM email_codes WHERE user_id = ?').run(row.id)
   })
   return findUser(row.id)
+}
+
+// Forgot password: the same 6-digit code by email (to an account that exists; the answer doesn't say
+// whether it does, so the form can't be used to find out who has an account).
+export async function forgotPassword(email: string) {
+  const row: any = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
+  if (row) await sendCode(row.id, email)
+}
+
+// The code proves the email is theirs, so they choose a new password (verify does it) and every other
+// logged-in device is logged out, in case someone else had their old password.
+export function resetPassword(input: VerifyInput) {
+  const user = verify(input)
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id)
+  return user
 }
 
 // After 10 wrong passwords for one email, that email must wait 15 minutes: stops password guessing.

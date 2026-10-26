@@ -9,7 +9,8 @@ import { Logo, Mascot } from '../components/UI'
 // first a friendly intro with two choices, then the sign-up or log-in form.
 export default function Welcome() {
   const { signIn } = useApp()
-  const [mode, setMode] = useState<'intro' | 'signup' | 'login'>('intro')
+  const [mode, setMode] = useState<'intro' | 'signup' | 'login' | 'forgot'>('intro')
+  const [resetEmail, setResetEmail] = useState('') // forgot password: the code was sent to this address
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   // After sign-up (or logging in before ever entering the code): the form's details, kept to send with the code.
@@ -30,6 +31,105 @@ export default function Welcome() {
   }
   const submit = (form: HTMLFormElement) =>
     send(signup ? '/auth/signup' : '/auth/login', Object.fromEntries(new FormData(form)))
+
+  // Forgot password: first the email (a code is sent), then the code and a new password.
+  async function forgot(email: string) {
+    setBusy(true)
+    setError('')
+    try {
+      await api('/auth/forgot', { method: 'POST', body: { email } })
+      setResetEmail(email)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy(false)
+  }
+  if (mode === 'forgot') {
+    return (
+      <>
+        <header className="page-top">
+          <button
+            className="icon-button"
+            aria-label="Back"
+            onClick={() => (setMode('login'), setResetEmail(''), setError(''))}
+          >
+            ←
+          </button>
+          <strong>New password</strong>
+        </header>
+        <h1>
+          Happens to
+          <br />
+          everyone.
+        </h1>
+        {!resetEmail ? (
+          <form onSubmit={(e) => (e.preventDefault(), forgot(String(new FormData(e.currentTarget).get('email'))))}>
+            <p>Enter your email and we’ll send you a 6-digit code.</p>
+            <label>
+              Email
+              <input name="email" type="email" required autoComplete="email" />
+            </label>
+            {error && (
+              <p className="notice pink" role="alert">
+                {error}
+              </p>
+            )}
+            <button className="button primary" disabled={busy}>
+              {busy ? 'One moment…' : 'Send me a code →'}
+            </button>
+          </form>
+        ) : (
+          <>
+            <p>
+              If <strong>{resetEmail}</strong> has an account, a 6-digit code is on its way. It can take a minute; check
+              spam too.
+            </p>
+            <form
+              onSubmit={(e) => (
+                e.preventDefault(),
+                send('/auth/reset', { email: resetEmail, ...Object.fromEntries(new FormData(e.currentTarget)) })
+              )}
+            >
+              <label>
+                Code
+                <input
+                  name="code"
+                  required
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                />
+              </label>
+              <label>
+                New password
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  maxLength={100}
+                  autoComplete="new-password"
+                />
+              </label>
+              <p className="hint">At least 8 characters. You’ll be logged out everywhere else.</p>
+              {error && (
+                <p className="notice pink" role="alert">
+                  {error}
+                </p>
+              )}
+              <button className="button primary" disabled={busy}>
+                {busy ? 'One moment…' : 'Save new password →'}
+              </button>
+            </form>
+            <button className="text-button" disabled={busy} onClick={() => forgot(resetEmail)}>
+              Send a new code
+            </button>
+          </>
+        )}
+      </>
+    )
+  }
 
   if (pending) {
     return (
@@ -174,6 +274,11 @@ export default function Welcome() {
           {busy ? 'One moment…' : signup ? 'Create account →' : 'Log in →'}
         </button>
       </form>
+      {!signup && (
+        <button className="text-button" onClick={() => (setMode('forgot'), setError(''))}>
+          Forgot password?
+        </button>
+      )}
       <button className="text-button" onClick={() => setMode(signup ? 'login' : 'signup')}>
         {signup ? 'I already have an account' : 'New here? Create an account'}
       </button>
