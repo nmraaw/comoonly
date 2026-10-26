@@ -46,7 +46,7 @@ export const suggestSchema = z
     text: z.string().trim().max(5000).default(''),
     image: imageSchema.optional(),
   })
-  .refine((p) => p.text || p.image, { message: 'Paste the caption or add a screenshot', path: ['text'] })
+  .refine((p) => p.text || p.image, { message: 'We can’t open the link itself: add a screenshot of the post, or paste its caption', path: ['text'] })
 
 // An admin adding or changing an event's poster.
 export const posterSchema = photoSchema

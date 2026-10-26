@@ -56,7 +56,8 @@ export default function SuggestEvent() {
         worth going to?
       </h1>
       <p>
-        Share an event from Instagram, TikTok or anywhere else. Add the caption, a screenshot of the poster, or both.
+        Share an event from Instagram, TikTok or anywhere else. Apps can’t read a post from its link, so add a
+        screenshot of the post (easiest) or paste its caption, or both.
       </p>
       <form
         onSubmit={(e) => {
@@ -69,11 +70,11 @@ export default function SuggestEvent() {
           <input name="postUrl" type="url" required placeholder="https://www.instagram.com/p/…" />
         </label>
         <label>
-          Caption (optional)
+          Caption (or add a screenshot below)
           <textarea name="text" maxLength={5000} placeholder="Paste the post’s text here" />
         </label>
         <label>
-          Poster screenshot (optional)
+          Screenshot of the post (or paste the caption above)
           <input name="image" type="file" accept="image/png,image/jpeg,image/webp" />
         </label>
         {note && (
