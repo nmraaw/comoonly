@@ -27,3 +27,6 @@ dist-ssr
 
 # Turso test runs: never commit local database copies
 /:memory:*
+
+# Judge password: only in the hackathon zip, never on GitHub
+JUDGE_LOGIN.md
