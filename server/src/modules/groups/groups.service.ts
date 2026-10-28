@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
+import { notify } from '../notifications/notifications.service.ts'
+import { INTERESTS } from '../auth/auth.service.ts'
 import type { CreateGroupInput, ListQuery } from './groups.schema.ts'
 
 // One query shape for list and detail, so both return exactly the frontend's GroupPreview.
@@ -54,6 +56,7 @@ function toPreview(row: any) {
     // For an event's groups (everyone going, and crews): which event, so the app can show them together.
     eventId: row.eventId as string | null,
     eventTitle: row.eventTitle as string | null,
+    pinned: row.pinned as string,
   }
 }
 
@@ -153,4 +156,38 @@ export function createGroup(ownerId: string, input: CreateGroupInput) {
     db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?, ?)').run(id, ownerId)
   })
   return getGroup(id)!
+}
+
+// Tell people about a new community that matches one of their interests, in their city (or online).
+// shortcut: checks every user in memory, fine for thousands of people, move matching into SQL beyond that.
+export function announceGroup(group: ReturnType<typeof toPreview>) {
+  const users = db.prepare(`SELECT u.id, u.city, ${INTERESTS} FROM users u WHERE u.id != ?`).all(group.ownerId) as any[]
+  const nearby = (city: string) =>
+    group.mode === 'Online' || !city || city.toLowerCase() === group.location.toLowerCase()
+  const ids = users.filter((u) => nearby(u.city) && JSON.parse(u.interests).includes(group.category)).map((u) => u.id)
+  const where = group.mode === 'Online' ? 'online' : `in ${group.location}`
+  if (ids.length)
+    notify(ids, 'update', `A new ${group.category} community started ${where}: ${group.name}`, `/posts/${group.id}`)
+}
+
+export function setPinned(groupId: string, userId: string, pinned: string) {
+  requireMember(groupId, userId)
+  db.prepare('UPDATE groups SET pinned = ? WHERE id = ?').run(pinned, groupId)
+}
+
+// "Same crew next time?": the organizer keeps the crew as a community. It leaves the event (so it isn't
+// deleted with it a week later), gets an interest and room to grow, and its chat and members stay.
+export function keepCrew(groupId: string, userId: string, input: { name: string; category: string }) {
+  const group = getGroup(groupId)
+  if (!group?.crewFor) throw new HttpError(404, 'Crew not found')
+  if (group.ownerId !== userId) throw new HttpError(403, 'Only the organizer can do this')
+  db.prepare(
+    'UPDATE groups SET event_id = NULL, name = ?, title = ?, category = ?, capacity = MAX(capacity, 30) WHERE id = ?',
+  ).run(input.name, input.name, input.category, groupId)
+  const others = db
+    .prepare("SELECT user_id FROM group_members WHERE group_id = ? AND status = 'joined' AND user_id != ?")
+    .all(groupId, userId)
+    .map((r: any) => r.user_id)
+  notify(others, 'update', `Same crew next time! ${input.name} is now a community`, `/groups/${groupId}`)
+  return getGroup(groupId)!
 }

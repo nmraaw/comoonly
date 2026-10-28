@@ -16,6 +16,7 @@ import EventPage from './pages/EventPage'
 import Notifications from './pages/Notifications'
 import SuggestEvent from './pages/SuggestEvent'
 import Privacy from './pages/Privacy'
+import ForYou from './pages/ForYou'
 import AppProvider from './state/AppProvider'
 import { useApp } from './state/AppContext'
 import './App.css'
@@ -48,6 +49,7 @@ function Gate() {
         <Route path="events/suggest" element={<SuggestEvent />} />
         <Route path="events/:id" element={<EventPage />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="for-you" element={<ForYou />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

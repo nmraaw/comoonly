@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { db } from '../../db/connection.ts'
+import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { requireMember } from '../groups/groups.service.ts'
 import { notify, markRead } from '../notifications/notifications.service.ts'
@@ -9,11 +9,21 @@ import { isBlocked } from '../safety/safety.service.ts'
 const LIMIT = 200 // newest 200 messages per conversation is plenty for small groups
 
 const SELECT = `SELECT m.id, m.author_id AS authorId, u.name AS author, m.text, m.created_at AS createdAt,
-    EXISTS (SELECT 1 FROM message_audio a WHERE a.message_id = m.id) AS voice
+    EXISTS (SELECT 1 FROM message_audio a WHERE a.message_id = m.id) AS voice,
+    (SELECT options FROM polls p WHERE p.message_id = m.id) AS poll,
+    (SELECT json_group_array(json_object('userId', v.user_id, 'choice', v.choice))
+       FROM poll_votes v WHERE v.message_id = m.id) AS votes
   FROM messages m JOIN users u ON u.id = m.author_id`
 
+// Polls come out of SQL as JSON text; the app gets real lists (and plain messages get neither).
+function withPoll(m: any) {
+  if (!m) return m
+  const { poll, votes, ...rest } = m
+  return poll ? { ...rest, poll: JSON.parse(poll), votes: JSON.parse(votes) } : rest
+}
+
 // Query returns newest first (so LIMIT keeps the latest); the screen wants oldest first.
-const oldestFirst = (rows: unknown[]) => rows.reverse()
+const oldestFirst = (rows: unknown[]) => rows.reverse().map(withPoll)
 
 // Anyone can message anyone they haven't blocked (and who hasn't blocked them).
 function requireNotBlocked(userId: string, otherId: string) {
@@ -97,7 +107,28 @@ function insert(m: { groupId: string | null; toId: string | null; userId: string
     m.text,
     Date.now(),
   )
-  return db.prepare(`${SELECT} WHERE m.id = ?`).get(id)
+  return withPoll(db.prepare(`${SELECT} WHERE m.id = ?`).get(id))
+}
+
+export function createPoll(groupId: string, userId: string, question: string, options: string[]) {
+  return transaction(() => {
+    const message: any = sendToGroup(groupId, userId, `📊 ${question}`)
+    db.prepare('INSERT INTO polls (message_id, options) VALUES (?, ?)').run(message.id, JSON.stringify(options))
+    return withPoll(db.prepare(`${SELECT} WHERE m.id = ?`).get(message.id))
+  })
+}
+
+// Voting again changes your vote. Only members of the poll's group can vote.
+export function vote(messageId: string, userId: string, choice: number) {
+  const poll: any = db
+    .prepare('SELECT p.options, m.group_id FROM polls p JOIN messages m ON m.id = p.message_id WHERE p.message_id = ?')
+    .get(messageId)
+  if (!poll) throw new HttpError(404, 'Poll not found')
+  requireMember(poll.group_id, userId)
+  if (choice >= JSON.parse(poll.options).length) throw new HttpError(400, 'That choice isn’t in the poll')
+  db.prepare(
+    'INSERT INTO poll_votes (message_id, user_id, choice) VALUES (?, ?, ?) ON CONFLICT (message_id, user_id) DO UPDATE SET choice = excluded.choice',
+  ).run(messageId, userId, choice)
 }
 
 // The Messages screen: private chats (connections, and requests you sent) and your group chats,

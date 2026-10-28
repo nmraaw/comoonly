@@ -3,6 +3,27 @@ import { useApp } from '../state/AppContext'
 import type { Message } from '../types'
 import { api, useApi } from '../api'
 import Icon from './Icon'
+import { Modal } from './UI'
+
+// The 🎲 button drops one of these into a group chat, to get strangers talking.
+const ICEBREAKERS = [
+  'Most overrated food in your city?',
+  'Chai or coffee, and how do you take it?',
+  'What’s a song you’ve had on repeat this week?',
+  'Mountains or beach?',
+  'What’s something you’re weirdly good at?',
+  'Best thing you’ve eaten this month?',
+  'Early bird or night owl?',
+  'What would you do with a free Saturday and no plans?',
+  'A hobby you’ve always wanted to try?',
+  'The last thing that made you laugh out loud?',
+  'Your comfort movie or show?',
+  'What’s the best event you’ve ever been to?',
+  'If you could learn one skill overnight, what would it be?',
+  'Biryani or karahi, and where’s the best one?',
+  'Texting or voice notes?',
+  'What’s on your bucket list for this year?',
+]
 
 // One conversation: a group chat (/groups/:id/messages) or a private one (/messages/with/:userId).
 // `onSent`: the page can refresh around the chat (e.g. a message request just became a chat).
@@ -15,6 +36,8 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
   const composer = useRef<HTMLFormElement>(null)
   const previousCount = useRef<number | null>(null)
   const items = data || []
+  const group = path.startsWith('/groups/') // polls and icebreakers are for group chats
+  const [polling, setPolling] = useState(false)
 
   useLayoutEffect(() => {
     const history = list.current
@@ -78,11 +101,35 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
     }
   }
 
-  async function send() {
+  async function vote(messageId: string, choice: number) {
+    await api('/messages/' + messageId + '/vote', { method: 'POST', body: { choice } }).catch((err) =>
+      alert(err.message),
+    )
+    reload()
+  }
+  async function poll(form: HTMLFormElement) {
+    const data = new FormData(form)
+    const options = data
+      .getAll('option')
+      .map(String)
+      .filter((o) => o.trim())
+    try {
+      await api(path.replace(/messages$/, 'polls'), {
+        method: 'POST',
+        body: { question: data.get('question'), options },
+      })
+      setPolling(false)
+      reload()
+    } catch (err) {
+      alert((err as Error).message)
+    }
+  }
+
+  async function send(text = draft) {
     setSending(true)
     try {
-      await api(path, { method: 'POST', body: { text: draft } })
-      setDraft('')
+      await api(path, { method: 'POST', body: { text } })
+      if (text === draft) setDraft('')
       reload()
       onSent?.()
     } catch (err) {
@@ -104,10 +151,66 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
               {message.authorId === me!.id ? 'You' : message.author} ·{' '}
               {new Date(message.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </strong>
-            {message.voice ? <audio controls preload="none" src={'/api/voice/' + message.id} /> : <p>{message.text}</p>}
+            {message.voice ? (
+              <audio controls preload="none" src={'/api/voice/' + message.id} />
+            ) : (
+              <p className={message.text.startsWith('🎲') ? 'icebreaker' : undefined}>{message.text}</p>
+            )}
+            {message.poll && (
+              <div className="poll" role="group" aria-label="Poll choices">
+                {message.poll.map((option, i) => {
+                  const votes = message.votes!.filter((v) => v.choice === i).length
+                  const mine = message.votes!.some((v) => v.choice === i && v.userId === me!.id)
+                  return (
+                    <button
+                      key={i}
+                      className={mine ? 'selected' : ''}
+                      aria-pressed={mine}
+                      onClick={() => vote(message.id, i)}
+                    >
+                      <span>{option}</span>
+                      <strong>{votes}</strong>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         ))}
       </div>
+      {group && !recorder && (
+        <div className="chat-tools">
+          <button type="button" className="chip" onClick={() => setPolling(true)}>
+            📊 Poll
+          </button>
+          <button
+            type="button"
+            className="chip"
+            disabled={sending}
+            onClick={() => send('🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)])}
+          >
+            🎲 Icebreaker
+          </button>
+        </div>
+      )}
+      {polling && (
+        <Modal title="Ask the group" onClose={() => setPolling(false)}>
+          <form onSubmit={(e) => (e.preventDefault(), poll(e.currentTarget))}>
+            <label>
+              Question
+              <input name="question" required maxLength={200} placeholder="Where do we meet?" />
+            </label>
+            {[0, 1, 2, 3].map((i) => (
+              <label key={i}>
+                Choice {i + 1}
+                {i > 1 && ' (optional)'}
+                <input name="option" required={i < 2} maxLength={60} />
+              </label>
+            ))}
+            <button className="button primary">Send poll →</button>
+          </form>
+        </Modal>
+      )}
       {recorder ? (
         <div className="composer recording">
           <button

@@ -26,6 +26,7 @@ export default function PostDetail() {
         </span>
       </Link>
       {group.hasPhoto && <img className="event-poster" src={`/api/groups/${group.id}/photo`} alt="" />}
+      <span className="kind-label community">🟢 Community</span>
       <h1>{group.title}</h1>
       <div className="chips">
         <span className="chip selected">{group.category}</span>

@@ -4,7 +4,7 @@ import { eventPlace, eventWhen } from '../events'
 import { Mascot } from './UI'
 
 // One published event in a list (Discover, the Events page). Everything else is on its own page.
-export default function EventCard({ event: e }: { event: EventItem }) {
+export default function EventCard({ event: e, why }: { event: EventItem; why?: string }) {
   const going = Boolean(e.myIntent)
   return (
     <article className="group-card expanded" data-card-id={e.id}>
@@ -15,6 +15,7 @@ export default function EventCard({ event: e }: { event: EventItem }) {
       )}
       <div className="event-head">
         <div>
+          <span className="kind-label event">📅 Event</span>
           <small>
             <strong>{eventWhen(e)}</strong> · {eventPlace(e)}
           </small>
@@ -24,6 +25,7 @@ export default function EventCard({ event: e }: { event: EventItem }) {
         </div>
         {!e.hasPoster && <Mascot seed={e.id} />}
       </div>
+      {why && <p className="why">🎯 {why}</p>}
       <div className="meta">
         <span className="chip selected">{e.category}</span>
         <small>{going ? 'You’re going' : e.goingCount ? `${e.goingCount} going together` : 'Be the first to go'}</small>

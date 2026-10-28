@@ -8,41 +8,54 @@ import type { EventItem } from '../types'
 import { Chips, Empty, Logo, Mascot, Modal } from '../components/UI'
 import Icon from '../components/Icon'
 import { useApp } from '../state/AppContext'
+import { aboutInterest, fit, INTERESTS, whyForYou } from '../interests'
 export default function Discover() {
   const { me, groups, saved, unread } = useApp()
   const [search, setSearch] = useState('')
   const [place, setPlace] = useState('Anywhere')
-  const places = ['Anywhere', ...(me!.city && me!.city !== 'Online' ? [me!.city] : []), 'Online']
-  const [category, setCategory] = useState('For you')
+  const [sort, setSort] = useState<'For you' | 'Soonest'>('For you')
+  const [category, setCategory] = useState('All')
   const [savedOnly, setSavedOnly] = useState(false)
   const [filters, setFilters] = useState(false)
-  const visible = groups.filter(
+  // Published events, checked every minute, so one an admin just published shows up without a reload.
+  const allEvents = useApi<EventItem[]>('/events', 60_000).data ?? []
+  const communities = groups.filter((g) => !g.forEvent)
+  // Your city first, then every other place something is happening.
+  const places = [
+    ...new Set(
+      ['Anywhere', me!.city, ...communities.map((g) => g.location), ...allEvents.map((e) => e.city), 'Online'].filter(
+        (c) => c && c !== 'Pakistan',
+      ),
+    ),
+  ]
+  const at = (city: string, online: boolean) =>
+    place === 'Anywhere' || (place === 'Online' ? online : city.toLowerCase() === place.toLowerCase())
+  const found = (text: string) => text.toLowerCase().includes(search.toLowerCase())
+  const visible = communities.filter(
     (g) =>
-      !g.forEvent &&
-      (place === 'Anywhere' || g.location.toLowerCase() === place.toLowerCase()) &&
-      (category === 'For you' || g.category === category) &&
+      at(g.location, g.mode !== 'In person') &&
+      (category === 'All' || g.category === category) &&
       (!savedOnly || saved.includes(g.id)) &&
-      (g.title + ' ' + g.description + ' ' + g.category).toLowerCase().includes(search.toLowerCase()),
+      found(g.title + ' ' + g.description + ' ' + g.category),
   )
-  // Published events sit at the top of the feed. Checked every minute, so one an admin just
-  // published shows up without anyone reloading.
-  const events = (useApi<EventItem[]>('/events', 60_000).data ?? []).filter(
+  const events = allEvents.filter(
     (e) =>
-      category === 'For you' &&
       !savedOnly &&
-      (place === 'Anywhere' ||
-        (place === 'Online' ? e.mode !== 'In person' : e.city.toLowerCase() === place.toLowerCase())) &&
-      (e.title + ' ' + e.description + ' ' + e.category).toLowerCase().includes(search.toLowerCase()),
+      at(e.city, e.mode !== 'In person') &&
+      (category === 'All' || aboutInterest(category, e)) &&
+      found(e.title + ' ' + e.description + ' ' + e.category),
   )
+  // One feed: events (soonest first, as the server sends them), then communities (newest first).
+  // "For you" moves what matches your interests and city to the top, keeping that order otherwise.
+  const items = [...events.map((event) => ({ event })), ...visible.map((group) => ({ group }))]
+  if (sort === 'For you') items.sort((a, b) => fit(me!, b) - fit(me!, a))
   const feed = useFeedWheel()
-  // Filters live behind the filter button; a short line says which ones are on.
-  const active = [place !== 'Anywhere' && place, category !== 'For you' && category, savedOnly && 'Saved'].filter(
-    Boolean,
-  )
+  // The interest and saved filters live behind the filter button; a short line says which ones are on.
+  const active = [category !== 'All' && category, savedOnly && 'Saved'].filter(Boolean)
   const clear = () => {
     setSearch('')
     setPlace('Anywhere')
-    setCategory('For you')
+    setCategory('All')
     setSavedOnly(false)
   }
   // The top stays small (logo row, one heading line with the mascot, search) so the feed gets the screen.
@@ -66,7 +79,7 @@ export default function Discover() {
             </Link>
             <button
               className="icon-button"
-              aria-label="Show saved groups"
+              aria-label="Show saved communities"
               aria-pressed={savedOnly}
               onClick={() => setSavedOnly((v) => !v)}
             >
@@ -81,7 +94,7 @@ export default function Discover() {
         <div className="search">
           <Icon name="search" />
           <input
-            aria-label="Search events and groups"
+            aria-label="Search events and communities"
             placeholder="What do you want to do?"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -91,18 +104,38 @@ export default function Discover() {
             {active.length > 0 && <span className="filter-dot" aria-label="filters on" />}
           </button>
         </div>
+        <div className="feed-controls">
+          <label>
+            📍
+            <select aria-label="City" value={place} onChange={(e) => setPlace(e.target.value)}>
+              {places.map((p) => (
+                <option key={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            ↕
+            <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+              <option>For you</option>
+              <option>Soonest</option>
+            </select>
+          </label>
+        </div>
         {active.length > 0 && (
           <button className="text-button filter-line" onClick={clear}>
             {active.join(' · ')} · Clear ×
           </button>
         )}
       </div>
-      <div className="discover-feed" ref={feed} aria-label="Discover group feed" tabIndex={0}>
-        {events.map((e) => (
-          <EventCard key={e.id} event={e} />
-        ))}
-        {visible.length || events.length ? (
-          visible.map((g) => <GroupCard key={g.id} group={g} />)
+      <div className="discover-feed" ref={feed} aria-label="Events and communities" tabIndex={0}>
+        {items.length ? (
+          items.map((item) =>
+            'event' in item ? (
+              <EventCard key={item.event.id} event={item.event} why={whyForYou(me!, item)} />
+            ) : (
+              <GroupCard key={item.group.id} group={item.group} why={whyForYou(me!, item)} />
+            ),
+          )
         ) : (
           <Empty>
             Nothing found. Try another search or filter.
@@ -114,16 +147,10 @@ export default function Discover() {
       </div>
       {filters && (
         <Modal title="Find your people" onClose={() => setFilters(false)}>
-          <Chips label="Where" values={places} value={place} onChange={setPlace} />
-          <Chips
-            label="Interests"
-            values={['For you', 'Music', 'Creative', 'Tech', 'Film', 'Reading']}
-            value={category}
-            onChange={setCategory}
-          />
+          <Chips label="Interests" values={['All', ...INTERESTS]} value={category} onChange={setCategory} />
           <label className="check-row">
-            <input type="checkbox" checked={savedOnly} onChange={(e) => setSavedOnly(e.target.checked)} /> Saved groups
-            only
+            <input type="checkbox" checked={savedOnly} onChange={(e) => setSavedOnly(e.target.checked)} /> Saved
+            communities only
           </label>
           <button className="button primary" onClick={() => setFilters(false)}>
             Show results

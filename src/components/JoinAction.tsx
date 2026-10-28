@@ -25,7 +25,7 @@ export default function JoinAction({ id }: { id: string }) {
     <>
       {state === 'joined' ? (
         <Link className="button primary" to={'/groups/' + id}>
-          Joined · Open group →
+          Joined · Open community →
         </Link>
       ) : state === 'pending' ? (
         <>

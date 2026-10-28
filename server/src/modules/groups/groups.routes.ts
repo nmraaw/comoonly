@@ -2,8 +2,18 @@ import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { photoSchema, savePhoto, sendPhoto } from '../../photos.ts'
-import { createGroupSchema, listQuerySchema } from './groups.schema.ts'
-import { createGroup, getGroup, listGroups, listMembers, savedGroupIds, toggleSaved } from './groups.service.ts'
+import { createGroupSchema, keepCrewSchema, listQuerySchema, pinnedSchema } from './groups.schema.ts'
+import {
+  announceGroup,
+  createGroup,
+  getGroup,
+  keepCrew,
+  listGroups,
+  listMembers,
+  savedGroupIds,
+  setPinned,
+  toggleSaved,
+} from './groups.service.ts'
 
 export const groupRoutes = Router()
 
@@ -44,5 +54,16 @@ groupRoutes.get('/:id/members', requireAuth, (req: any, res) => {
 
 // Browsing is public; creating needs an account so the group has a real owner.
 groupRoutes.post('/', requireAuth, (req: any, res) => {
-  res.status(201).json(createGroup(req.user.id, createGroupSchema.parse(req.body)))
+  const group = createGroup(req.user.id, createGroupSchema.parse(req.body))
+  announceGroup(group) // here, not in createGroup: crews are made with it too, and aren't announced
+  res.status(201).json(group)
+})
+
+groupRoutes.put('/:id/pinned', requireAuth, (req: any, res) => {
+  setPinned(req.params.id, req.user.id, pinnedSchema.parse(req.body).pinned)
+  res.status(204).end()
+})
+
+groupRoutes.post('/:id/keep', requireAuth, (req: any, res) => {
+  res.json(keepCrew(req.params.id, req.user.id, keepCrewSchema.parse(req.body)))
 })

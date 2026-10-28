@@ -3,7 +3,7 @@ import type { Group } from '../types'
 import { useApp } from '../state/AppContext'
 import { Avatar } from './UI'
 import Icon from './Icon'
-export default function GroupCard({ group }: { group: Group }) {
+export default function GroupCard({ group, why }: { group: Group; why?: string }) {
   const { saved, save, membership } = useApp()
   const status = membership[group.id]
   return (
@@ -30,9 +30,11 @@ export default function GroupCard({ group }: { group: Group }) {
           <Icon name="save" />
         </button>
       </div>
+      <span className="kind-label community">🟢 Community</span>
       <Link className="card-title" to={'/posts/' + group.id}>
         <h2>{group.title}</h2>
       </Link>
+      {why && <p className="why">🎯 {why}</p>}
       <p>{group.description}</p>
       <div className="meta">
         <span className="chip selected">{group.category}</span>
@@ -42,7 +44,7 @@ export default function GroupCard({ group }: { group: Group }) {
       </div>
       {status === 'joined' ? (
         <Link className="button primary" to={'/groups/' + group.id}>
-          Open group →
+          Open community →
         </Link>
       ) : (
         <Link className="button primary" to={'/posts/' + group.id}>

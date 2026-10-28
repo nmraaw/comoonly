@@ -1,7 +1,24 @@
 import { z } from 'zod'
 
-// Same choices as the chips in the Create and Discover pages.
-export const categories = ['Creative', 'Music', 'Tech', 'Film', 'Reading'] as const
+// A community's interest: the same choices people pick on their profile (src/interests.ts), so they can be matched.
+export const categories = [
+  'Music',
+  'Creative',
+  'Tech',
+  'Film',
+  'Reading',
+  'Games',
+  'Drawing',
+  'Coffee',
+  'Walking',
+  'Design',
+  'Sports',
+  'Food',
+  'Hackathons',
+  'Workshops',
+  'Competitions',
+  'Meetups',
+] as const
 export const modes = ['In person', 'Online', 'Hybrid'] as const
 
 // Query-string values always arrive as text, hence z.coerce for the numbers.
@@ -28,6 +45,15 @@ export const createGroupSchema = z
     path: ['location'],
     message: 'Where will you meet?',
   })
+
+// The pinned plan at the top of a group's chat.
+export const pinnedSchema = z.object({ pinned: z.string().trim().max(200) })
+
+// "Same crew next time?": the organizer turns a crew into a lasting community.
+export const keepCrewSchema = z.object({
+  name: z.string().trim().min(1).max(70),
+  category: z.enum(categories),
+})
 
 export type ListQuery = z.infer<typeof listQuerySchema>
 export type CreateGroupInput = z.infer<typeof createGroupSchema>

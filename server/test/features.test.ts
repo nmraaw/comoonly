@@ -206,10 +206,21 @@ test('admins publish events; anyone can find people to go with', async () => {
   assert.equal(followUpCrews(), 0)
   assert.match((await get('/notifications', noor))[0].text, /with Hira\. Say thanks and connect!/)
 
+  // "Same crew next time?": the organizer keeps the crew as a community, which outlives the event.
+  const keep = { name: 'Hira’s sketch crew', category: 'Drawing' }
+  assert.equal(await status(`/groups/${crewId}/keep`, json(keep, noor)), 403)
+  const kept = await (await fetch(`${base}/groups/${crewId}/keep`, json(keep, hira))).json()
+  assert.deepEqual([kept.name, kept.category, kept.forEvent, kept.crewFor], [keep.name, 'Drawing', false, null])
+  assert.match(
+    (await get('/notifications', noor))[0].text,
+    /Same crew next time! Hira’s sketch crew is now a community/,
+  )
+
   // Deleting an event (admins only) removes its go-together group too.
   assert.equal(await status(`/events/${listed.id}`, json({}, hira, 'DELETE')), 403)
   assert.equal(await status(`/events/${listed.id}`, json({}, sara, 'DELETE')), 204)
   assert.equal(await status(`/groups/${first.groupId}`), 404)
+  assert.equal(await status(`/groups/${crewId}`), 200) // the kept crew stays
   assert.equal((await get('/events', hira)).length, 0)
 })
 
@@ -241,4 +252,36 @@ test('voice messages: sent in a chat, heard only by the people in it', async () 
   const heard = await fetch(`${base}/voice/${sent.id}`, { headers: { cookie: hira } })
   assert.equal(heard.headers.get('content-type'), 'audio/webm')
   assert.equal(await status(`/voice/${sent.id}`, { headers: { cookie: zain } }), 403) // not in the group
+})
+
+test('communities: matching people hear about new ones; pinned plan, polls and votes are for members', async () => {
+  const [zain, noor, hamza] = [await loginAs('zain'), await loginAs('noor'), await loginAs('hamza')]
+  const community = {
+    name: 'Sketch & chai',
+    description: 'Drawing on Sundays.',
+    mode: 'In person',
+    location: 'Sialkot',
+    spots: 5,
+  }
+  assert.equal(await status('/groups', json({ ...community, category: 'Art' }, zain)), 400) // not one of the interests
+  const { id } = await (await fetch(`${base}/groups`, json({ ...community, category: 'Drawing' }, zain))).json()
+  // Noor likes Drawing and lives in Sialkot; Hamza likes Drawing but is elsewhere.
+  assert.match((await get('/notifications', noor))[0].text, /A new Drawing community started in Sialkot: Sketch & chai/)
+  assert.ok(!(await get('/notifications', hamza)).some((n: { text: string }) => n.text.includes('Sketch & chai')))
+
+  assert.equal(await status(`/groups/${id}/pinned`, json({ pinned: 'Sun 10am, Cafe' }, noor, 'PUT')), 403)
+  assert.equal(await status(`/groups/${id}/pinned`, json({ pinned: 'Sun 10am, Cafe' }, zain, 'PUT')), 204)
+  assert.equal((await get(`/groups/${id}`)).pinned, 'Sun 10am, Cafe')
+
+  assert.equal(await status(`/groups/${id}/polls`, json({ question: 'Chai?', options: ['Yes'] }, zain)), 400)
+  const poll = await (
+    await fetch(`${base}/groups/${id}/polls`, json({ question: 'Chai?', options: ['Yes', 'Always'] }, zain))
+  ).json()
+  assert.deepEqual([poll.text, poll.poll, poll.votes], ['📊 Chai?', ['Yes', 'Always'], []])
+  assert.equal(await status(`/messages/${poll.id}/vote`, json({ choice: 0 }, noor)), 403) // not a member
+  assert.equal(await status(`/messages/${poll.id}/vote`, json({ choice: 2 }, zain)), 400) // only 2 choices
+  assert.equal(await status(`/messages/${poll.id}/vote`, json({ choice: 0 }, zain)), 204)
+  assert.equal(await status(`/messages/${poll.id}/vote`, json({ choice: 1 }, zain)), 204) // changing your vote
+  const [message] = (await get(`/groups/${id}/messages`, zain)).slice(-1)
+  assert.deepEqual(message.votes, [{ userId: 'zain', choice: 1 }])
 })

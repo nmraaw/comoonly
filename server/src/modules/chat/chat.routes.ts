@@ -1,14 +1,16 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
-import { messageSchema } from './chat.schema.ts'
+import { messageSchema, pollSchema, voteSchema } from './chat.schema.ts'
 import {
   conversations,
+  createPoll,
   directMessages,
   groupMessages,
   requireCanHear,
   sendDirect,
   sendToGroup,
   VOICE_TEXT,
+  vote,
 } from './chat.service.ts'
 import { savePhoto, sendPhoto, voiceSchema } from '../../photos.ts'
 
@@ -53,4 +55,14 @@ chatRoutes.post('/messages/with/:userId/voice', requireAuth, (req: any, res) => 
 chatRoutes.get('/voice/:messageId', requireAuth, (req: any, res) => {
   requireCanHear(req.params.messageId, req.user.id)
   sendPhoto(res, 'voice', req.params.messageId)
+})
+
+chatRoutes.post('/groups/:id/polls', requireAuth, (req: any, res) => {
+  const { question, options } = pollSchema.parse(req.body)
+  res.status(201).json(createPoll(req.params.id, req.user.id, question, options))
+})
+
+chatRoutes.post('/messages/:messageId/vote', requireAuth, (req: any, res) => {
+  vote(req.params.messageId, req.user.id, voteSchema.parse(req.body).choice)
+  res.status(204).end()
 })

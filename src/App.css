@@ -1266,3 +1266,97 @@ main:has(> .chat) > .chat {
   font-weight: 700;
   font-size: 13px;
 }
+
+/* Discover: city and sort, side by side under the search. */
+.feed-controls {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.feed-controls label {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 22px;
+  background: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+.feed-controls select {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+}
+/* Which kind of thing a feed card is. */
+.kind-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.kind-label.community {
+  background: #d6f0dc;
+}
+.kind-label.event {
+  background: var(--lilac);
+}
+.why {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+/* Group chat activities: the Poll and Icebreaker buttons, poll choices and icebreaker bubbles. */
+.chat-tools {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+.chat-tools .chip {
+  border: 0;
+  min-height: 36px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.poll {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.poll button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.poll button.selected {
+  background: var(--lime);
+}
+.icebreaker {
+  font-weight: 700;
+}
+.pinned .text-button {
+  margin-left: 6px;
+}

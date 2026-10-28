@@ -21,6 +21,7 @@ export type Group = {
   hasPhoto: boolean // a photo or poster the host added
   eventId: string | null // an event's everyone-going group or crew: that event
   eventTitle: string | null
+  pinned: string // the plan pinned at the top of the chat, e.g. "Meet at Gate 2, 5:45"
 }
 
 // A person (GET /api/users/:id). `connection` is how you're linked to them:
@@ -45,8 +46,17 @@ export type User = {
 export type Me = User & { email: string; isAdmin: boolean; gender: Gender }
 export type Gender = '' | 'woman' | 'man' | 'private'
 
-// `voice`: a voice message; its recording plays from /api/voice/:id.
-export type Message = { id: string; authorId: string; author: string; text: string; createdAt: number; voice: 0 | 1 }
+// `voice`: a voice message; its recording plays from /api/voice/:id. `poll`: its choices, with everyone's votes.
+export type Message = {
+  id: string
+  authorId: string
+  author: string
+  text: string
+  createdAt: number
+  voice: 0 | 1
+  poll?: string[]
+  votes?: { userId: string; choice: number }[]
+}
 
 // An event on the Events page or in the review queue (GET /api/events).
 export type EventItem = {

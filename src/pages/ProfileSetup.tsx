@@ -6,25 +6,7 @@ import { api } from '../api'
 import { photoChanged, shrink } from '../images'
 import { useApp } from '../state/AppContext'
 import type { Gender } from '../types'
-// The last four match event types, so you hear about new hackathons, workshops etc. (see events.service.ts).
-const INTERESTS = [
-  'Music',
-  'Creative',
-  'Tech',
-  'Film',
-  'Reading',
-  'Games',
-  'Drawing',
-  'Coffee',
-  'Walking',
-  'Design',
-  'Sports',
-  'Food',
-  'Hackathons',
-  'Workshops',
-  'Competitions',
-  'Meetups',
-]
+import { INTERESTS } from '../interests'
 // `first` = right after sign-up (no way back yet); otherwise it's "Edit profile" from the Me tab.
 export default function ProfileSetup({ first = false }: { first?: boolean }) {
   const { me, saveProfile } = useApp()
@@ -53,7 +35,7 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
         tiktok: String(data.get('tiktok')),
         interests: picked,
       })
-      if (!first) navigate('/me')
+      navigate(first ? '/for-you' : '/me') // new people first see the communities that match them
     } catch (err) {
       setError((err as Error).message)
       setBusy(false)
