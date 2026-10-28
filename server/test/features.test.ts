@@ -387,3 +387,41 @@ test('prices on events; a crew’s areas and shared costs, split so everyone is 
   assert.equal(await status(`/groups/${tiny}/expenses/${expense.id}`, json({}, hira, 'DELETE')), 204)
   assert.deepEqual((await get(`/groups/${tiny}/expenses`, sara)).settle, [])
 })
+
+test('event day: still coming, I’m here, and the show-up score that stays after the event', async () => {
+  const { db } = await import('../src/db/connection.ts')
+  db.prepare("UPDATE users SET gender = 'man' WHERE id IN ('zain', 'nm')").run()
+  const [sara, zain, nm, hira] = await Promise.all(['sara', 'zain', 'nm', 'hira'].map((u) => loginAs(u)))
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' })
+  const event = {
+    title: 'Cricket at the park',
+    date: `${today}T23:00`,
+    city: 'Sialkot',
+    category: 'Sports',
+    registerUrl: 'https://cricket.test/1',
+    sourceUrl: 'https://cricket.test',
+  }
+  await fetch(`${base}/events`, json(event, sara))
+  const { id } = (await get('/events', zain)).find((e: { title: string }) => e.title === event.title)
+  const crew = { size: 3, womenOnly: false, plan: 'Gate 2' }
+  const { id: crewId } = await (await fetch(`${base}/events/${id}/crews`, json(crew, zain))).json()
+  await fetch(`${base}/groups/${crewId}/requests`, json({ intro: 'Hi!' }, nm))
+  await fetch(`${base}/groups/${crewId}/requests/nm`, json({ decision: 'accept' }, zain))
+
+  assert.equal(await status(`/groups/${crewId}/coming`, json({ answer: 'yes' }, hira, 'PUT')), 403) // not in the crew
+  assert.equal(await status(`/groups/${crewId}/coming`, json({ answer: 'no' }, nm, 'PUT')), 204)
+  assert.match((await get('/notifications', zain))[0].text, /can’t make it to Cricket at the park/)
+  assert.equal(await status(`/groups/${crewId}/here`, json({}, zain)), 204)
+  assert.match((await get('/notifications', nm))[0].text, /📍 .* is here at Cricket at the park/)
+  const members = await get(`/groups/${crewId}/members`, nm)
+  const [z, n] = ['zain', 'nm'].map((who) => members.find((m: { id: string }) => m.id === who))
+  assert.deepEqual([Boolean(z.arrivedAt), z.stillComing, n.arrivedAt, n.stillComing], [true, 'yes', null, 'no'])
+
+  // After the event: who turned up is kept, and shows on profiles.
+  db.prepare("UPDATE events SET starts_at = '2001-01-01' WHERE id = ?").run(id)
+  const { followUpCrews } = await import('../src/modules/events/events.going.ts')
+  followUpCrews()
+  assert.equal(await status(`/groups/${crewId}/here`, json({}, nm)), 409) // too late to check in
+  assert.deepEqual((await get('/users/zain', hira)).showedUp, { showed: 1, crews: 1 })
+  assert.deepEqual((await get('/users/nm', hira)).showedUp, { showed: 0, crews: 1 })
+})

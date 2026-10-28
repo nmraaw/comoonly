@@ -21,11 +21,16 @@ export function connectionStatus(viewerId: string, otherId: string) {
 }
 
 // What anyone logged in can see on a profile. Email stays private.
+// The show-up score: of the crews someone went with, how many times they tapped "I'm here".
+export const SHOWED_UP = `(SELECT COUNT(*) FROM attendance a WHERE a.user_id = u.id) AS crews,
+  (SELECT COALESCE(SUM(showed), 0) FROM attendance a WHERE a.user_id = u.id) AS showed`
+
 export function getProfile(id: string, viewerId: string) {
   const user: any = db
     .prepare(
       `SELECT u.id, u.name, u.city, u.tagline, u.bio, u.gender, u.instagram, u.tiktok, u.created_at, ${INTERESTS},
-         (SELECT COUNT(*) FROM event_going g WHERE g.user_id = u.id) AS events
+         (SELECT COUNT(*) FROM event_going g WHERE g.user_id = u.id) AS events,
+         ${SHOWED_UP}
        FROM users u WHERE u.id = ?`,
     )
     .get(id)
@@ -50,6 +55,7 @@ export function getProfile(id: string, viewerId: string) {
     tiktok: user.tiktok,
     joinedAt: user.created_at,
     events: user.events, // how many events they've said they're going to
+    showedUp: { showed: user.showed, crews: user.crews }, // turned up for their crew, of how many
     groups,
     connection: connectionStatus(viewerId, id),
     blocked: hasBlocked(viewerId, id), // you blocked them: the page offers Unblock

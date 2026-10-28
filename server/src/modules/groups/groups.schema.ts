@@ -47,5 +47,8 @@ export const expenseSchema = z.object({
   amount: z.coerce.number().int('Whole rupees only').min(1, 'Add an amount').max(1_000_000),
 })
 
+// A crew member's answer to "Still coming?" on the day.
+export const comingSchema = z.object({ answer: z.enum(['yes', 'no']) })
+
 export type ListQuery = z.infer<typeof listQuerySchema>
 export type CreateGroupInput = z.infer<typeof createGroupSchema>

@@ -63,6 +63,14 @@ export default function Profile({
               <p className="trust-line">
                 Joined {new Date(person.joinedAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} ·{' '}
                 {person.events} {person.events === 1 ? 'event' : 'events'}
+                {!!person.showedUp?.crews && (
+                  <>
+                    {' · '}
+                    <strong>
+                      ✓ Showed up {person.showedUp.showed} of {person.showedUp.crews}
+                    </strong>
+                  </>
+                )}
               </p>
             )}
             {(person.instagram || person.tiktok) && (

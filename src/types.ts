@@ -38,6 +38,7 @@ export type User = {
   tiktok: string
   joinedAt?: number // on other people's profiles: when they joined, and how many events they've gone to
   events?: number
+  showedUp?: { showed: number; crews: number } // tapped "I'm here" for their crew, of how many crews
   connection?: 'pending' | 'incoming' | 'accepted' | null
   blocked?: boolean // you blocked this person
 }

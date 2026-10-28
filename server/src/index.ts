@@ -3,7 +3,7 @@ import { config } from './config.ts'
 import { seedIfEmpty } from './db/seed.ts'
 import { scanSources } from './modules/events/events.finder.ts'
 import { tidyEvents } from './modules/events/events.service.ts'
-import { followUpCrews } from './modules/events/events.going.ts'
+import { askStillComing, followUpCrews } from './modules/events/events.going.ts'
 
 // Entry point: `npm run server`. The app starts empty; real people sign up.
 // SEED_DEMO=1 fills an empty database with sample people and groups (handy for a quick local try-out).
@@ -24,6 +24,7 @@ async function findEvents() {
 if (config.isProd || process.env.AUTO_FIND === '1') {
   setTimeout(findEvents, 60_000) // a minute after start, so a crash-and-restart loop can't spam the sites
   setInterval(findEvents, 12 * 3_600_000)
+  setInterval(() => askStillComing(), 3_600_000) // "Still coming?" on event days
 }
 
 app.listen(config.port, () => {

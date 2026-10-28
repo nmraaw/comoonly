@@ -2,8 +2,10 @@ import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { photoSchema, savePhoto, sendPhoto } from '../../photos.ts'
+import { answerStillComing, imHere } from '../events/events.going.ts'
 import {
   areaSchema,
+  comingSchema,
   createGroupSchema,
   expenseSchema,
   keepCrewSchema,
@@ -96,5 +98,16 @@ groupRoutes.post('/:id/expenses', requireAuth, (req: any, res) => {
 
 groupRoutes.delete('/:id/expenses/:expenseId', requireAuth, (req: any, res) => {
   deleteExpense(req.params.id, req.user.id, req.params.expenseId)
+  res.status(204).end()
+})
+
+// A crew on the event day: "Still coming?" and "I'm here".
+groupRoutes.put('/:id/coming', requireAuth, (req: any, res) => {
+  answerStillComing(req.params.id, req.user.id, comingSchema.parse(req.body).answer)
+  res.status(204).end()
+})
+
+groupRoutes.post('/:id/here', requireAuth, (req: any, res) => {
+  imHere(req.params.id, req.user.id)
   res.status(204).end()
 })

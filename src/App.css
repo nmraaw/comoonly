@@ -1437,3 +1437,18 @@ main:has(> .chat) > .chat {
 .expense span {
   flex: 1;
 }
+/* A crew on the event day: the check-in buttons and who's where. */
+.notice.today {
+  display: grid;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--lime), white);
+}
+.notice.today .button.selected {
+  background: var(--ink);
+  color: var(--lime);
+}
+.roll-call {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}

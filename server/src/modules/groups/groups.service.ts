@@ -109,7 +109,8 @@ export function listMembers(groupId: string, viewerId: string) {
   const group = requireMember(groupId, viewerId)
   const rows = db
     .prepare(
-      `SELECT u.id, u.name, m.area FROM group_members m JOIN users u ON u.id = m.user_id
+      `SELECT u.id, u.name, m.area, m.still_coming AS stillComing, m.arrived_at AS arrivedAt
+       FROM group_members m JOIN users u ON u.id = m.user_id
        WHERE m.group_id = ? AND m.status = 'joined' ORDER BY m.rowid`,
     )
     .all(groupId)

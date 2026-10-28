@@ -3,7 +3,7 @@ import { HttpError } from '../../middleware/errors.ts'
 import { findUser, requireVerified } from '../auth/auth.service.ts'
 import { getGroup } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
-import { nameOf } from '../people/people.service.ts'
+import { nameOf, SHOWED_UP } from '../people/people.service.ts'
 import { isBlocked } from '../safety/safety.service.ts'
 import type { Decision } from './requests.schema.ts'
 
@@ -60,7 +60,7 @@ export function listRequests(groupId: string, hostId: string) {
   findHostedGroup(groupId, hostId)
   return db
     .prepare(
-      `SELECT u.id, u.name, u.city, m.intro FROM group_members m JOIN users u ON u.id = m.user_id
+      `SELECT u.id, u.name, u.city, m.intro, ${SHOWED_UP} FROM group_members m JOIN users u ON u.id = m.user_id
        WHERE m.group_id = ? AND m.status = 'pending' ORDER BY m.rowid`,
     )
     .all(groupId)

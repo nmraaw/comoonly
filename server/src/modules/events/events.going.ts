@@ -5,6 +5,7 @@ import { createGroup, getGroup, isMember } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { requestToJoin } from '../requests/requests.service.ts'
 import { isBlocked } from '../safety/safety.service.ts'
+import { nameOf } from '../people/people.service.ts'
 import { getEvent } from './events.service.ts'
 import type { CrewInput, Intent } from './events.schema.ts'
 
@@ -147,10 +148,18 @@ export function followUpCrews() {
     for (const crew of crews) {
       const people = db
         .prepare(
-          `SELECT u.id, u.name FROM group_members m JOIN users u ON u.id = m.user_id
+          `SELECT u.id, u.name, m.arrived_at AS arrivedAt FROM group_members m JOIN users u ON u.id = m.user_id
            WHERE m.group_id = ? AND m.status = 'joined'`,
         )
-        .all(crew.id) as { id: string; name: string }[]
+        .all(crew.id) as { id: string; name: string; arrivedAt: number | null }[]
+      // The show-up score: did each person tap "I'm here"? Only crews of 2+, where someone else was there too.
+      if (people.length > 1)
+        for (const p of people)
+          db.prepare('INSERT OR IGNORE INTO attendance (user_id, event_id, showed) VALUES (?, ?, ?)').run(
+            p.id,
+            event.id,
+            p.arrivedAt ? 1 : 0,
+          )
       for (const person of people) {
         const others = people.filter((p) => p.id !== person.id).map((p) => p.name.split(' ')[0])
         if (!others.length) continue
@@ -279,4 +288,66 @@ function membersOf(groupId: string) {
       user_id: string
     }[]
   ).map((r) => r.user_id)
+}
+
+// Event days are Pakistan days, whatever the server's clock zone.
+const pakistanToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' })
+
+function crewEvent(groupId: string, userId: string) {
+  const group = getGroup(groupId)
+  if (!group?.crewFor) throw new HttpError(404, 'Crew not found')
+  if (!isMember(groupId, userId)) throw new HttpError(403, 'Join this crew to see this')
+  return { group, event: getEvent(group.crewFor) }
+}
+
+// "Still coming?": yes, or can't make it (the organizer hears straight away), any time before the event is over.
+export function answerStillComing(groupId: string, userId: string, answer: 'yes' | 'no') {
+  const { group, event } = crewEvent(groupId, userId)
+  if (event.date.slice(0, 10) < pakistanToday()) throw new HttpError(409, 'This event is over')
+  db.prepare('UPDATE group_members SET still_coming = ? WHERE group_id = ? AND user_id = ?').run(
+    answer,
+    groupId,
+    userId,
+  )
+  if (answer === 'no' && group.ownerId !== userId)
+    notify(group.ownerId, 'update', `${nameOf(userId)} can’t make it to ${event.title}`, `/groups/${groupId}`)
+}
+
+// "I'm here 📍", on the event day only. The rest of the crew hears, so nobody waits at the gate wondering.
+// shortcut: trusts the tap (no location check), add a GPS check near the venue if people game the score.
+export function imHere(groupId: string, userId: string) {
+  const { event } = crewEvent(groupId, userId)
+  if (event.date.slice(0, 10) !== pakistanToday()) throw new HttpError(409, 'You can check in on the day of the event')
+  db.prepare(
+    "UPDATE group_members SET arrived_at = ?, still_coming = 'yes' WHERE group_id = ? AND user_id = ? AND arrived_at IS NULL",
+  ).run(Date.now(), groupId, userId)
+  notify(
+    membersOf(groupId).filter((id) => id !== userId),
+    'update',
+    `📍 ${nameOf(userId)} is here at ${event.title}`,
+    `/groups/${groupId}`,
+    true,
+  )
+}
+
+// Hourly, from 8am Pakistan time on the event day: each crew member is asked "Still coming?" once.
+export function askStillComing() {
+  if (Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', hour12: false })) < 8)
+    return 0
+  const events = db
+    .prepare(
+      "SELECT id, title FROM events WHERE status = 'published' AND crews_asked = 0 AND substr(starts_at, 1, 10) = ?",
+    )
+    .all(pakistanToday()) as { id: string; title: string }[]
+  for (const event of events) {
+    for (const crew of db.prepare('SELECT id FROM groups WHERE event_id = ?').all(event.id) as { id: string }[])
+      notify(
+        membersOf(crew.id),
+        'update',
+        `Still coming to ${event.title} today? Let your crew know 👋`,
+        `/groups/${crew.id}`,
+      )
+    db.prepare('UPDATE events SET crews_asked = 1 WHERE id = ?').run(event.id)
+  }
+  return events.length
 }

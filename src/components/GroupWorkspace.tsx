@@ -36,8 +36,10 @@ export default function GroupWorkspace({ id }: { id: string }) {
   const [keeping, setKeeping] = useState(false)
   const [memory, setMemory] = useState(false)
   const [interest, setInterest] = useState('Meetups')
-  const members = useApi<{ id: string; name: string; role: string; area: string }[]>('/groups/' + id + '/members')
-  const requests = useApi<{ id: string; name: string; city: string; intro: string }[]>(
+  const members = useApi<
+    { id: string; name: string; role: string; area: string; stillComing: '' | 'yes' | 'no'; arrivedAt: number | null }[]
+  >('/groups/' + id + '/members', 15_000)
+  const requests = useApi<{ id: string; name: string; city: string; intro: string; showed: number; crews: number }[]>(
     host ? '/groups/' + id + '/requests' : null,
   )
   // Every change goes to the server first; then the list is loaded again so everyone sees the same thing.
@@ -60,6 +62,12 @@ export default function GroupWorkspace({ id }: { id: string }) {
   // The pinned plan; a crew's starts as the meeting plan its organizer wrote.
   const pinned = group.pinned || (group.crewFor ? 'Meeting: ' + group.description : '')
   const over = Boolean(group.crewFor && event.data && new Date(event.data.date) < new Date())
+  // The event day (Pakistan time): "Still coming?" and "I'm here". From the day before, just "Still coming?".
+  const pakistanToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' })
+  const eventDay = event.data?.date.slice(0, 10) ?? ''
+  const tomorrow = new Date(Date.parse(pakistanToday) + 86_400_000).toISOString().slice(0, 10)
+  const soon = Boolean(group.crewFor && (eventDay === pakistanToday || eventDay === tomorrow))
+  const myself = members.data?.find((m) => m.id === me!.id)
   const savePinned = (form: HTMLFormElement) =>
     run(
       api('/groups/' + id + '/pinned', { method: 'PUT', body: { pinned: new FormData(form).get('pinned') } })
@@ -107,6 +115,47 @@ export default function GroupWorkspace({ id }: { id: string }) {
             {pinned ? 'Edit' : 'Pin a plan'}
           </button>
         </p>
+      )}
+      {soon && myself && (
+        <article className="notice today">
+          <strong>{eventDay === pakistanToday ? 'Today’s the day! 🎉' : 'Tomorrow’s the day 👀'}</strong>
+          {eventDay === pakistanToday && !myself.arrivedAt && (
+            <button
+              className="button lime"
+              onClick={() => run(api('/groups/' + id + '/here', { method: 'POST' }), members)}
+            >
+              📍 I’m here
+            </button>
+          )}
+          {!myself.arrivedAt && (
+            <div className="two-actions">
+              {(['yes', 'no'] as const).map((answer) => (
+                <button
+                  key={answer}
+                  className={'button' + (myself.stillComing === answer ? ' selected' : '')}
+                  aria-pressed={myself.stillComing === answer}
+                  onClick={() => run(api('/groups/' + id + '/coming', { method: 'PUT', body: { answer } }), members)}
+                >
+                  {answer === 'yes' ? '✓ Still coming' : 'Can’t make it'}
+                </button>
+              ))}
+            </div>
+          )}
+          <ul className="roll-call">
+            {members.data!.map((m) => (
+              <li key={m.id}>
+                {m.id === me!.id ? 'You' : m.name.split(' ')[0]}:{' '}
+                {m.arrivedAt
+                  ? '📍 here'
+                  : m.stillComing === 'yes'
+                    ? '✓ coming'
+                    : m.stillComing === 'no'
+                      ? '✗ can’t make it'
+                      : '… no answer yet'}
+              </li>
+            ))}
+          </ul>
+        </article>
       )}
       {over && (
         <article className="notice lilac">
@@ -184,7 +233,10 @@ export default function GroupWorkspace({ id }: { id: string }) {
                     <Avatar id={r.id} name={r.name} />
                     <span>
                       <strong>{r.name}</strong>
-                      <small>{r.city}</small>
+                      <small>
+                        {r.city}
+                        {!!r.crews && ` · ✓ Showed up ${r.showed} of ${r.crews}`}
+                      </small>
                     </span>
                   </Link>
                   <p>{r.intro}</p>
