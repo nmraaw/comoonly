@@ -28,7 +28,8 @@ export const createGroupSchema = z
   .object({
     name: z.string().trim().min(1).max(70),
     description: z.string().trim().min(1).max(400),
-    category: interest,
+    // Up to 3 interests, joined: "Music, Tech".
+    category: z.string().trim().min(1, 'Pick an interest').max(100, 'Keep the interests short'),
     mode: z.enum(modes),
     location: z.string().trim().max(80).default(''),
     spots: z.coerce.number().int().min(1).max(30), // "How many people are you looking for?"

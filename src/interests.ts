@@ -22,6 +22,9 @@ export const INTERESTS = [
 
 const same = (a: string, b: string) => Boolean(a) && a.toLowerCase() === b.toLowerCase()
 
+// A community can have up to 3 interests, saved as "Music, Tech".
+export const interestsOf = (g: Group) => g.category.split(', ')
+
 // "Hackathons" matches a Hackathon; "Music" matches an event that mentions music (like the server's notices).
 export function aboutInterest(interest: string, e: EventItem) {
   const word = interest.toLowerCase().replace(/s$/, '')
@@ -35,7 +38,7 @@ export const eventInterest = (me: Me, e: EventItem) => me.interests.find((intere
 export function whyForYou(me: Me, item: { group: Group } | { event: EventItem }) {
   const [interest, near] =
     'group' in item
-      ? [me.interests.find((i) => same(i, item.group.category)), same(me.city, item.group.location)]
+      ? [me.interests.find((i) => interestsOf(item.group).some((c) => same(i, c))), same(me.city, item.group.location)]
       : [eventInterest(me, item.event), same(me.city, item.event.city)]
   if (!interest) return ''
   return `You like ${interest}` + (near ? ` · ${me.city}` : '')

@@ -87,7 +87,7 @@ export function listGroups(query: ListQuery) {
     where.push(condition)
     params.push(value)
   }
-  if (query.category) filter('g.category = ?', query.category)
+  if (query.category) filter(`', ' || LOWER(g.category) || ', ' LIKE ?`, `%, ${query.category.toLowerCase()}, %`)
   if (query.mode) filter('g.mode = ?', query.mode)
   if (query.location) filter('g.location = ?', query.location)
   if (query.q) {
@@ -195,7 +195,11 @@ export function announceGroup(group: ReturnType<typeof toPreview>) {
   const nearby = (city: string) =>
     group.mode === 'Online' || !city || city.toLowerCase() === group.location.toLowerCase()
   const ids = users
-    .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => same(i, group.category)))
+    .filter(
+      (u) =>
+        nearby(u.city) &&
+        JSON.parse(u.interests).some((i: string) => group.category.split(', ').some((c: string) => same(i, c))),
+    )
     .map((u) => u.id)
   const where = group.mode === 'Online' ? 'online' : `in ${group.location}`
   const text = group.project

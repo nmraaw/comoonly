@@ -10,7 +10,7 @@ import type { EventItem } from '../types'
 import { Chips, Empty, Logo, Mascot, Modal } from '../components/UI'
 import Icon from '../components/Icon'
 import { useApp } from '../state/AppContext'
-import { aboutInterest, fit, INTERESTS, whyForYou } from '../interests'
+import { aboutInterest, fit, INTERESTS, interestsOf, whyForYou } from '../interests'
 export default function Discover() {
   const { me, groups, saved, unread } = useApp()
   const [search, setSearch] = useState('')
@@ -42,7 +42,7 @@ export default function Discover() {
   const found = (text: string) => text.toLowerCase().includes(search.toLowerCase())
   const matches = (g: (typeof groups)[number]) =>
     at(g.location, g.mode !== 'In person') &&
-    (category === 'All' || g.category === category) &&
+    (category === 'All' || interestsOf(g).includes(category)) &&
     (!savedOnly || saved.includes(g.id)) &&
     found(g.title + ' ' + g.description + ' ' + g.category)
   const visible = communities.filter(matches)
@@ -62,7 +62,7 @@ export default function Discover() {
   // projects (newest first). "Best match" moves what fits your interests and city to the top.
   const items = [
     ...(tab === 'For you' || tab === 'Events' ? events.map((event) => ({ event })) : []),
-    ...(tab === 'For you' || tab === 'Groups' ? visible.map((group) => ({ group })) : []),
+    ...(tab === 'For you' || tab === 'Communities' ? visible.map((group) => ({ group })) : []),
     ...(tab === 'For you' || tab === 'Unfinished'
       ? unfinished.filter((g) => g !== featured).map((group) => ({ group }))
       : []),
@@ -132,7 +132,7 @@ export default function Discover() {
           </button>
         </div>
         <div className="feed-tabs" role="group" aria-label="Show">
-          {['For you', 'Events', 'Groups', 'Unfinished'].map((t) => (
+          {['For you', 'Events', 'Communities', 'Unfinished'].map((t) => (
             <button key={t} className={t === tab ? 'selected' : ''} aria-pressed={t === tab} onClick={() => setTab(t)}>
               {t}
             </button>

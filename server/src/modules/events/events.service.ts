@@ -8,7 +8,7 @@ import type { EventInput, EventPatch } from './events.schema.ts'
 
 const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description, e.price,
     e.register_url AS registerUrl, e.source_url AS sourceUrl, e.status, e.group_id AS groupId,
-    (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy,
+    (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy, e.suggested_by AS suggestedById,
     (SELECT COUNT(*) FROM event_going g WHERE g.event_id = e.id) AS goingCount,
     EXISTS (SELECT 1 FROM event_posters p WHERE p.event_id = e.id) AS hasPoster
   FROM events e`

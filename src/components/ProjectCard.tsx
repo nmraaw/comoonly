@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { Group } from '../types'
 import { STAGES, STATUS, STOPPED } from '../projects'
 import { useApi } from '../api'
+import { Avatar } from './UI'
 
 // One unfinished project from the Idea Graveyard: how far it got, why it stopped, and what it needs.
 // `compact`: the small "Something worth picking up" card at the top of the feed.
@@ -12,6 +13,15 @@ export default function ProjectCard({ group, why, compact }: { group: Group; why
   const revivedBy = p.startedById && p.startedById !== group.ownerId ? group.owner : ''
   return (
     <article className={'group-card expanded project-card' + (compact ? ' compact' : '')} data-card-id={group.id}>
+      <div className="card-person">
+        <Link className="person-button" to={'/users/' + group.ownerId}>
+          <Avatar id={group.ownerId} name={group.owner} />
+          <span>
+            <strong>{group.owner}</strong>
+            <small>{revivedBy ? 'Reviving it' : 'Started it'}</small>
+          </span>
+        </Link>
+      </div>
       {group.hasPhoto && !compact && (
         <Link to={'/posts/' + group.id} tabIndex={-1} aria-hidden="true">
           <img className="event-poster" src={`/api/groups/${group.id}/photo`} alt="" loading="lazy" />
@@ -21,10 +31,7 @@ export default function ProjectCard({ group, why, compact }: { group: Group; why
       <Link className="card-title" to={'/posts/' + group.id}>
         <h2>{group.title}</h2>
       </Link>
-      <small className="credit">
-        Started by {p.startedBy ?? 'someone who left'}
-        {revivedBy && ` · revived by ${revivedBy}`}
-      </small>
+      {revivedBy && <small className="credit">Started by {p.startedBy ?? 'someone who left'}</small>}
       <div className="progress" role="img" aria-label={`Got as far as: ${STAGES[p.stage]}`}>
         {stages.map((s, i) => (
           <span key={s} className={i <= reached ? 'done' : ''} />

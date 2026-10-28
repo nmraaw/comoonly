@@ -15,17 +15,20 @@ export function Chips({
   label,
 }: {
   values: string[]
-  value: string
+  value: string | string[] // several: the caller adds or removes the tapped one
   onChange: (v: string) => void
   label: string
 }) {
+  const on = (v: string) => (Array.isArray(value) ? value.includes(v) : value === v)
   return (
     <div className="chips" role="group" aria-label={label}>
       {values.map((v) => (
+        // type="button": a chip inside a form must not submit it (that created posts several times).
         <button
+          type="button"
           key={v}
-          className={value === v ? 'chip selected' : 'chip'}
-          aria-pressed={value === v}
+          className={on(v) ? 'chip selected' : 'chip'}
+          aria-pressed={on(v)}
           onClick={() => onChange(v)}
         >
           {v}

@@ -911,6 +911,10 @@ input[type='file']::file-selector-button {
   border-radius: 18px;
   background: var(--paper);
 }
+/* On a feed card the poster sits between the person row and the label. */
+.group-card .event-poster {
+  margin-bottom: 14px;
+}
 .event-head .mascot {
   width: 76px;
   flex: none;
@@ -1270,7 +1274,7 @@ main:has(> .chat) > .chat {
 /* Discover: what to show, as a row of tabs under the search. */
 .feed-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin: 0 0 8px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1279,11 +1283,11 @@ main:has(> .chat) > .chat {
   flex: none;
   border: 0;
   border-radius: 20px;
-  padding: 9px 12px;
+  padding: 9px 8px;
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1643,18 +1647,6 @@ main:has(> .chat) > .chat {
 .weekend-plan p {
   margin: 4px 0;
   font-size: 14px;
-}
-/* Spotify in chats: a compact player, or a Join the Jam button. */
-.bubble .spotify {
-  display: block;
-  width: 100%;
-  min-width: 220px;
-  margin-top: 6px;
-  border: 0;
-  border-radius: 12px;
-}
-.bubble .jam {
-  margin-top: 6px;
 }
 /* Welcome: what Comoonly is for, in three lines. */
 .welcome-points {

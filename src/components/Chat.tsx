@@ -25,33 +25,6 @@ const ICEBREAKERS = [
   'Texting or voice notes?',
   'What’s on your bucket list for this year?',
 ]
-// Spotify links in a chat: songs, albums, playlists and podcasts play right in the chat; a Jam invite
-// (spotify.link/… or …/socialsession/…) becomes a "Join the Jam" button that opens Spotify.
-const SPOTIFY =
-  /https:\/\/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]+)/
-const JAM = /https:\/\/(?:spotify\.link\/[A-Za-z0-9]+|open\.spotify\.com\/socialsession\/[A-Za-z0-9-]+)\S*/
-function Spotify({ text }: { text: string }) {
-  const jam = text.match(JAM)
-  if (jam)
-    return (
-      <a className="button lime jam" href={jam[0]} target="_blank" rel="noopener noreferrer">
-        🎧 Join the Jam on Spotify ↗
-      </a>
-    )
-  const [, type, id] = text.match(SPOTIFY)!
-  return (
-    <iframe
-      className="spotify"
-      title="Spotify player"
-      src={`https://open.spotify.com/embed/${type}/${id}`}
-      height={type === 'track' || type === 'episode' ? 80 : 152}
-      allow="encrypted-media"
-      loading="lazy"
-    />
-  )
-}
-const isSpotify = (text: string) => SPOTIFY.test(text) || JAM.test(text)
-
 const randomIcebreaker = () => '🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)]
 
 // One conversation: a group chat (/groups/:id/messages) or a private one (/messages/with/:userId).
@@ -67,8 +40,7 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
   const items = data || []
   const group = path.startsWith('/groups/') // polls and icebreakers are for group chats
   const [polling, setPolling] = useState(false)
-  const [tray, setTray] = useState(false) // the ＋ menu: photo, music, poll, icebreaker
-  const [music, setMusic] = useState(false)
+  const [tray, setTray] = useState(false) // the ＋ menu: photo, poll, icebreaker
   const icebreaker = () => send(randomIcebreaker())
 
   useLayoutEffect(() => {
@@ -214,7 +186,6 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
             ) : (
               <p className={message.text.startsWith('🎲') ? 'icebreaker' : undefined}>{message.text}</p>
             )}
-            {isSpotify(message.text) && <Spotify text={message.text} />}
             {message.poll && (
               <div className="poll" role="group" aria-label="Poll choices">
                 {message.poll.map((option, i) => {
@@ -255,10 +226,6 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
               }}
             />
           </label>
-          <button type="button" onClick={() => (setTray(false), setMusic(true))}>
-            <span aria-hidden="true">🎵</span>
-            Music
-          </button>
           {group && (
             <>
               <button type="button" onClick={() => (setTray(false), setPolling(true))}>
@@ -272,29 +239,6 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
             </>
           )}
         </div>
-      )}
-      {music && (
-        <Modal title="Listen together" onClose={() => setMusic(false)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              const link = String(new FormData(e.currentTarget).get('link')).trim()
-              if (!isSpotify(link)) return alert('Paste a link from Spotify (open.spotify.com or spotify.link).')
-              setMusic(false)
-              send('🎵 ' + link)
-            }}
-          >
-            <p>
-              Share a song or playlist, or start a <strong>Jam</strong> so everyone can add songs and listen at the same
-              time: in Spotify, play something, tap the speaker icon → <strong>Start a Jam</strong> → Share link.
-            </p>
-            <label>
-              Spotify link
-              <input name="link" required placeholder="https://open.spotify.com/track/… or spotify.link/…" />
-            </label>
-            <button className="button primary">Share →</button>
-          </form>
-        </Modal>
       )}
       {polling && (
         <Modal title="Ask the group" onClose={() => setPolling(false)}>

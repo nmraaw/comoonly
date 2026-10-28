@@ -1,13 +1,34 @@
 import { Link } from 'react-router-dom'
 import type { EventItem } from '../types'
 import { eventPlace, eventPrice, eventWhen } from '../events'
-import { Mascot } from './UI'
+import { Avatar, Mascot } from './UI'
 
 // One published event in a list (Discover, the Events page). Everything else is on its own page.
 export default function EventCard({ event: e, why }: { event: EventItem; why?: string }) {
   const going = Boolean(e.myIntent)
   return (
     <article className="group-card expanded" data-card-id={e.id}>
+      <div className="card-person">
+        {e.suggestedById ? (
+          <Link className="person-button" to={'/users/' + e.suggestedById}>
+            <Avatar id={e.suggestedById} name={e.suggestedBy ?? ''} />
+            <span>
+              <strong>{e.suggestedBy}</strong>
+              <small>Shared this</small>
+            </span>
+          </Link>
+        ) : (
+          <span className="person-button">
+            <span className="avatar comoonly" aria-hidden="true">
+              <img src="/favicon.svg" alt="" />
+            </span>
+            <span>
+              <strong>Comoonly</strong>
+              <small>Found for you</small>
+            </span>
+          </span>
+        )}
+      </div>
       {Boolean(e.hasPoster) && (
         <Link to={'/events/' + e.id} tabIndex={-1} aria-hidden="true">
           <img className="event-poster" src={`/api/events/${e.id}/poster`} alt="" loading="lazy" />

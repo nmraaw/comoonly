@@ -81,6 +81,7 @@ export type EventItem = {
   deadline: string
   price: number | null // cheapest ticket in rupees: 0 = free, null = not stated
   suggestedBy: string | null
+  suggestedById: string | null // null: Comoonly added it (an admin or the finder)
   city: string
   mode: string
   category: string

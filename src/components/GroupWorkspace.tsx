@@ -9,7 +9,7 @@ import CrewPlan from './CrewPlan'
 import { ProjectHistory } from './ProjectCard'
 import { STATUS } from '../projects'
 import type { Project } from '../types'
-import { aboutInterest, INTERESTS } from '../interests'
+import { aboutInterest, INTERESTS, interestsOf } from '../interests'
 import EventDetails from './EventDetails'
 import Chat from './Chat'
 import DetailHeader from './DetailHeader'
@@ -37,7 +37,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
   )
   const upcoming = (allEvents.data ?? []).filter(
     (e) =>
-      aboutInterest(group!.category, e) &&
+      interestsOf(group!).some((i) => aboutInterest(i, e)) &&
       (e.mode !== 'In person' || group!.mode === 'Online' || e.city.toLowerCase() === group!.location.toLowerCase()),
   )
   const [editing, setEditing] = useState(false)

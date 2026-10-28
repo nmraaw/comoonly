@@ -13,7 +13,17 @@ const KINDS = ['🟢 A community', '🪦 An unfinished idea', '📅 An event']
 const KIND_PARAMS = ['', 'project', 'event']
 export default function Create() {
   const { me, create, refresh } = useApp()
-  const [category, setCategory] = useState(me!.interests[0] ?? 'Creative')
+  // Up to 3 interests, saved as "Music, Tech" (see interestsOf). `other`: one typed by the person.
+  const [picked, setPicked] = useState<string[]>(me!.interests.filter((i) => INTERESTS.includes(i)).slice(0, 1))
+  const [other, setOther] = useState<string | null>(null)
+  const chosen = [...picked, ...(other?.trim() ? [other.replace(/,/g, ' ').trim()] : [])]
+  const category = chosen.join(', ')
+  const toggle = (v: string) =>
+    v === 'Other'
+      ? setOther((o) => (o === null ? '' : null))
+      : setPicked((p) =>
+          p.includes(v) ? p.filter((x) => x !== v) : p.length + (other === null ? 0 : 1) < 3 ? [...p, v] : p,
+        )
   const [mode, setMode] = useState('Online') // most communities start by talking; meeting up can come later
   // A community, or an unfinished idea for the Idea Graveyard (/create?kind=project).
   const [params, setParams] = useSearchParams()
@@ -189,21 +199,22 @@ export default function Create() {
               </div>
             </>
           )}
-          <h2 className="section-title">{project ? 'What is it about?' : 'Pick an interest'}</h2>
+          <h2 className="section-title">{project ? 'What is it about?' : 'Pick interests'}</h2>
+          <p className="hint">Up to 3.</p>
           <Chips
-            label="Community interest"
+            label="Interests"
             values={[...INTERESTS, 'Other']}
-            value={INTERESTS.includes(category) ? category : 'Other'}
-            onChange={(v) => setCategory(v === 'Other' ? '' : v)}
+            value={other === null ? picked : [...picked, 'Other']}
+            onChange={toggle}
           />
-          {!INTERESTS.includes(category) && (
+          {other !== null && (
             <label>
               Your interest
               <input
                 required
                 maxLength={30}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
                 placeholder="Chess, cricket, poetry…"
               />
             </label>
@@ -240,7 +251,7 @@ export default function Create() {
               {error}
             </p>
           )}
-          <button className="button primary" disabled={busy}>
+          <button className="button primary" disabled={busy || !category}>
             {busy ? 'Publishing…' : project ? 'Give it a second chance →' : 'Start community →'}
           </button>
         </form>

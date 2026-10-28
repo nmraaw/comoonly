@@ -12,8 +12,8 @@ is emailed), pick your interests, and Comoonly shows you who and what fits you.
   ("You like Drawing · Lahore"), alerts when a new one starts nearby, upcoming events for each one.
 - **The Idea Graveyard:** post an idea you couldn't finish (how far it got, why it stopped, what it needs).
   Others offer help or adopt it; the original creator stays credited and its story is kept.
-- **Chat that keeps people coming back:** polls, icebreakers, photos, voice messages, Spotify songs and
-  Jams, a pinned plan.
+- **Chat that keeps people coming back:** polls, icebreakers, photos, voice messages, a
+  pinned plan.
 - **Events:** found by an AI from Instagram and event sites, or snapped from a poster with your camera;
   checked by an admin. Prices, budget filter, "✨ Plan my weekend".
 - **Going together:** a general chat per event, **crews** of 2 to 5 (women-only optional), and

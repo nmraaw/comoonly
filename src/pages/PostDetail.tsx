@@ -7,6 +7,7 @@ import { Avatar, Empty } from '../components/UI'
 import { useApi } from '../api'
 import type { EventItem } from '../types'
 import ProjectPage from '../components/ProjectPage'
+import { interestsOf } from '../interests'
 export default function PostDetail() {
   const { id } = useParams()
   const { groups, saved, save } = useApp()
@@ -31,7 +32,11 @@ export default function PostDetail() {
       <span className="kind-label community">🟢 Community</span>
       <h1>{group.title}</h1>
       <div className="chips">
-        <span className="chip selected">{group.category}</span>
+        {interestsOf(group).map((i) => (
+          <span className="chip selected" key={i}>
+            {i}
+          </span>
+        ))}
         <span className="chip">{group.mode}</span>
       </div>
       <p>{group.description}</p>

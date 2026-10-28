@@ -518,3 +518,19 @@ test('plan my weekend: this weekend’s events that fit you, with reasons (witho
   const answer = await get('/events/weekend', zain) // no AI in tests: the rule plans it
   assert.ok(['this weekend', 'this week'].includes(answer.when))
 })
+
+test('a community can have several interests, and is found by each', async () => {
+  const hira = await loginAs('hira')
+  const res = await fetch(
+    `${base}/groups`,
+    json(
+      { name: 'Beats & bytes', description: 'Music and code', category: 'Music, Tech', mode: 'Online', spots: 5 },
+      hira,
+    ),
+  )
+  assert.equal(res.status, 201)
+  const { id } = await res.json()
+  for (const interest of ['Music', 'tech'])
+    assert.ok((await get('/groups?category=' + interest, hira)).some((g: { id: string }) => g.id === id))
+  assert.ok(!(await get('/groups?category=Musi', hira)).some((g: { id: string }) => g.id === id))
+})
