@@ -1274,6 +1274,7 @@ main:has(> .chat) > .chat {
 /* Discover: what to show, as a row of tabs under the search. */
 .feed-tabs {
   display: flex;
+  justify-content: space-between; /* spread across the search bar's width */
   gap: 2px;
   margin: 0 0 8px;
   overflow-x: auto;
