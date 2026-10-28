@@ -3,6 +3,7 @@ import { db, transaction } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { INTERESTS } from '../auth/auth.service.ts'
+import { nameOf } from '../people/people.service.ts'
 import type { CreateGroupInput, ListQuery } from './groups.schema.ts'
 
 // One query shape for list and detail, so both return exactly the frontend's GroupPreview.
@@ -11,9 +12,13 @@ const SELECT = `
     g.event_id IS NOT NULL OR EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id) AS forEvent,
     EXISTS (SELECT 1 FROM group_photos p WHERE p.group_id = g.id) AS hasPhoto,
     (SELECT e.id FROM events e WHERE e.id = g.event_id OR e.group_id = g.id) AS eventId,
-    (SELECT e.title FROM events e WHERE e.id = g.event_id OR e.group_id = g.id) AS eventTitle
+    (SELECT e.title FROM events e WHERE e.id = g.event_id OR e.group_id = g.id) AS eventTitle,
+    p.stage, p.stopped, p.story, p.needs, p.status AS projectStatus, p.free_to_adopt AS freeToAdopt,
+    p.started_by AS startedById, su.name AS startedBy
   FROM groups g
   JOIN users u ON u.id = g.owner_id
+  LEFT JOIN projects p ON p.group_id = g.id
+  LEFT JOIN users su ON su.id = p.started_by
   LEFT JOIN group_members m ON m.group_id = g.id AND m.status = 'joined'`
 
 // Whitelist: user input picks a key, never raw SQL.
@@ -57,6 +62,20 @@ function toPreview(row: any) {
     eventId: row.eventId as string | null,
     eventTitle: row.eventTitle as string | null,
     pinned: row.pinned as string,
+    // The Idea Graveyard: an unfinished project's details, or null for communities, event chats and crews.
+    project:
+      row.kind === 'project'
+        ? {
+            stage: row.stage as string,
+            stopped: row.stopped as string,
+            story: row.story as string,
+            needs: JSON.parse(row.needs) as string[],
+            status: row.projectStatus as string,
+            freeToAdopt: Boolean(row.freeToAdopt),
+            startedById: row.startedById as string | null, // the original creator, even after adoption
+            startedBy: row.startedBy as string | null,
+          }
+        : null,
   }
 }
 
@@ -155,6 +174,14 @@ export function createGroup(ownerId: string, input: CreateGroupInput) {
       Date.now(),
     )
     db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?, ?)').run(id, ownerId)
+    if (input.project) {
+      const p = input.project
+      db.prepare("UPDATE groups SET kind = 'project' WHERE id = ?").run(id)
+      db.prepare(
+        'INSERT INTO projects (group_id, stage, stopped, story, needs, free_to_adopt, started_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, p.stage, p.stopped, p.story, JSON.stringify(p.needs), p.freeToAdopt ? 1 : 0, ownerId)
+      addHistory(id, '🪦', `${nameOf(ownerId)} laid it to rest, hoping someone picks it up`)
+    }
   })
   return getGroup(id)!
 }
@@ -171,8 +198,10 @@ export function announceGroup(group: ReturnType<typeof toPreview>) {
     .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => same(i, group.category)))
     .map((u) => u.id)
   const where = group.mode === 'Online' ? 'online' : `in ${group.location}`
-  if (ids.length)
-    notify(ids, 'update', `A new ${group.category} community started ${where}: ${group.name}`, `/posts/${group.id}`)
+  const text = group.project
+    ? `An unfinished ${group.category} idea needs a second life: ${group.name}`
+    : `A new ${group.category} community started ${where}: ${group.name}`
+  if (ids.length) notify(ids, 'update', text, `/posts/${group.id}`)
 }
 
 export function setPinned(groupId: string, userId: string, pinned: string) {
@@ -250,4 +279,99 @@ export function deleteExpense(groupId: string, userId: string, expenseId: string
     .prepare('DELETE FROM expenses WHERE id = ? AND group_id = ? AND payer_id = ?')
     .run(expenseId, groupId, userId)
   if (!removed.changes) throw new HttpError(404, 'Expense not found')
+}
+
+// ── The Idea Graveyard ──────────────────────────────────────────────────────────────────────────────
+
+export function addHistory(groupId: string, emoji: string, text: string) {
+  db.prepare('INSERT INTO project_history (id, group_id, emoji, text, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    randomUUID(),
+    groupId,
+    emoji,
+    text,
+    Date.now(),
+  )
+}
+
+export function projectHistory(groupId: string) {
+  return db
+    .prepare('SELECT emoji, text, created_at AS createdAt FROM project_history WHERE group_id = ? ORDER BY created_at')
+    .all(groupId)
+}
+
+function findProject(groupId: string) {
+  const group = getGroup(groupId)
+  if (!group?.project) throw new HttpError(404, 'Project not found')
+  return group
+}
+
+// Someone joined to help: the project is being revived (called when the owner accepts a helper).
+export function helperJoined(groupId: string, userId: string) {
+  addHistory(groupId, '🤝', `${nameOf(userId)} joined to help`)
+  db.prepare("UPDATE projects SET status = 'reviving' WHERE group_id = ? AND status = 'resting'").run(groupId)
+}
+
+// Taking a project over. "Free to adopt" projects are yours straight away; otherwise the owner decides.
+export function askToAdopt(groupId: string, userId: string, note: string) {
+  const group = findProject(groupId)
+  if (group.ownerId === userId) throw new HttpError(409, 'It’s already yours')
+  if (group.project!.freeToAdopt) return (adopt(group, userId), 'adopted')
+  db.prepare(
+    `INSERT INTO adoption_requests (group_id, user_id, note, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (group_id, user_id) DO UPDATE SET note = excluded.note`,
+  ).run(groupId, userId, note, Date.now())
+  notify(group.ownerId, 'update', `${nameOf(userId)} would like to adopt ${group.name}`, `/groups/${groupId}`)
+  return 'pending'
+}
+
+export function adoptionRequests(groupId: string, ownerId: string) {
+  if (findProject(groupId).ownerId !== ownerId) throw new HttpError(403, 'Only the owner can see this')
+  return db
+    .prepare(
+      `SELECT u.id, u.name, a.note FROM adoption_requests a JOIN users u ON u.id = a.user_id
+       WHERE a.group_id = ? ORDER BY a.created_at`,
+    )
+    .all(groupId)
+}
+
+export function decideAdoption(groupId: string, ownerId: string, userId: string, accept: boolean) {
+  const group = findProject(groupId)
+  if (group.ownerId !== ownerId) throw new HttpError(403, 'Only the owner can do this')
+  const removed = db.prepare('DELETE FROM adoption_requests WHERE group_id = ? AND user_id = ?').run(groupId, userId)
+  if (!removed.changes) throw new HttpError(404, 'Request not found')
+  if (accept) adopt(group, userId)
+}
+
+// The new owner takes over; the old one stays on as a member, and the original creator stays credited.
+function adopt(group: ReturnType<typeof findProject>, userId: string) {
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO group_members (group_id, user_id, status) VALUES (?, ?, 'joined')
+       ON CONFLICT (group_id, user_id) DO UPDATE SET status = 'joined'`,
+    ).run(group.id, userId)
+    db.prepare('UPDATE groups SET owner_id = ? WHERE id = ?').run(userId, group.id)
+    db.prepare("UPDATE projects SET status = 'reviving' WHERE group_id = ? AND status = 'resting'").run(group.id)
+    db.prepare('DELETE FROM adoption_requests WHERE group_id = ?').run(group.id)
+    addHistory(group.id, '🔁', `Adopted by ${nameOf(userId)}`)
+  })
+  notify(
+    group.ownerId,
+    'update',
+    `${nameOf(userId)} adopted ${group.name}. It’s getting a second life!`,
+    `/groups/${group.id}`,
+  )
+  notify(userId, 'update', `${group.name} is yours now. Give it a second life 🌱`, `/groups/${group.id}`)
+}
+
+// The owner says where it stands; "alive" is the happy ending.
+export function setProjectStatus(groupId: string, ownerId: string, status: 'resting' | 'reviving' | 'alive') {
+  const group = findProject(groupId)
+  if (group.ownerId !== ownerId) throw new HttpError(403, 'Only the owner can do this')
+  db.prepare('UPDATE projects SET status = ? WHERE group_id = ?').run(status, groupId)
+  const [emoji, text] = {
+    resting: ['🪦', 'Back to resting'],
+    reviving: ['🌱', 'Being revived'],
+    alive: ['✨', 'Alive again!'],
+  }[status]
+  addHistory(groupId, emoji, text)
 }

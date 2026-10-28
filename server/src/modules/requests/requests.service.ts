@@ -1,7 +1,7 @@
 import { db } from '../../db/connection.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { findUser, requireVerified } from '../auth/auth.service.ts'
-import { getGroup } from '../groups/groups.service.ts'
+import { getGroup, helperJoined } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import { nameOf, SHOWED_UP } from '../people/people.service.ts'
 import { isBlocked } from '../safety/safety.service.ts'
@@ -73,8 +73,10 @@ export function decide(groupId: string, hostId: string, userId: string, decision
   const status = decision === 'accept' ? 'joined' : 'declined'
   db.prepare('UPDATE group_members SET status = ? WHERE group_id = ? AND user_id = ?').run(status, groupId, userId)
   // Only good news is sent. Declined people learn it if they ask again (see requestToJoin).
-  if (status === 'joined')
+  if (status === 'joined') {
     notify(userId, 'update', `You’re in! ${group.name} accepted your request`, `/groups/${groupId}`)
+    if (group.project) helperJoined(groupId, userId)
+  }
   return status
 }
 

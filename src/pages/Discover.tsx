@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useFeedWheel } from '../hooks/useFeedWheel'
 import GroupCard from '../components/GroupCard'
 import EventCard from '../components/EventCard'
+import ProjectCard from '../components/ProjectCard'
 import { useApi } from '../api'
 import type { EventItem } from '../types'
 import { Chips, Empty, Logo, Mascot, Modal } from '../components/UI'
@@ -13,14 +14,16 @@ export default function Discover() {
   const { me, groups, saved, unread } = useApp()
   const [search, setSearch] = useState('')
   const [place, setPlace] = useState('Anywhere')
-  const [sort, setSort] = useState<'For you' | 'Soonest'>('For you')
+  const [sort, setSort] = useState('Best match')
+  const [tab, setTab] = useState('For you')
   const [category, setCategory] = useState('All')
   const [budget, setBudget] = useState('Any price')
   const [savedOnly, setSavedOnly] = useState(false)
   const [filters, setFilters] = useState(false)
   // Published events, checked every minute, so one an admin just published shows up without a reload.
   const allEvents = useApi<EventItem[]>('/events', 60_000).data ?? []
-  const communities = groups.filter((g) => !g.forEvent)
+  const communities = groups.filter((g) => !g.forEvent && !g.project)
+  const projects = groups.filter((g) => g.project)
   // Your city first, then every other place something is happening.
   const places = [
     ...new Set(
@@ -36,13 +39,13 @@ export default function Discover() {
   const at = (city: string, online: boolean) =>
     place === 'Anywhere' || (place === 'Online' ? online : city.toLowerCase() === place.toLowerCase())
   const found = (text: string) => text.toLowerCase().includes(search.toLowerCase())
-  const visible = communities.filter(
-    (g) =>
-      at(g.location, g.mode !== 'In person') &&
-      (category === 'All' || g.category === category) &&
-      (!savedOnly || saved.includes(g.id)) &&
-      found(g.title + ' ' + g.description + ' ' + g.category),
-  )
+  const matches = (g: (typeof groups)[number]) =>
+    at(g.location, g.mode !== 'In person') &&
+    (category === 'All' || g.category === category) &&
+    (!savedOnly || saved.includes(g.id)) &&
+    found(g.title + ' ' + g.description + ' ' + g.category)
+  const visible = communities.filter(matches)
+  const unfinished = projects.filter(matches)
   const events = allEvents.filter(
     (e) =>
       !savedOnly &&
@@ -51,20 +54,34 @@ export default function Discover() {
       withinBudget(e) &&
       found(e.title + ' ' + e.description + ' ' + e.category),
   )
-  // One feed: events (soonest first, as the server sends them), then communities (newest first).
-  // "For you" moves what matches your interests and city to the top, keeping that order otherwise.
-  const items = [...events.map((event) => ({ event })), ...visible.map((group) => ({ group }))]
-  if (sort === 'For you') items.sort((a, b) => fit(me!, b) - fit(me!, a))
+  // "Something worth picking up": one unfinished idea at the top of For you, to introduce the Graveyard.
+  const featured =
+    tab === 'For you' ? unfinished.find((g) => g.project!.status !== 'alive' && g.ownerId !== me!.id) : undefined
+  // The tabs pick what's shown: events (soonest first, as the server sends them), communities and
+  // projects (newest first). "Best match" moves what fits your interests and city to the top.
+  const items = [
+    ...(tab === 'For you' || tab === 'Events' ? events.map((event) => ({ event })) : []),
+    ...(tab === 'For you' || tab === 'Groups' ? visible.map((group) => ({ group })) : []),
+    ...(tab === 'For you' || tab === 'Unfinished'
+      ? unfinished.filter((g) => g !== featured).map((group) => ({ group }))
+      : []),
+  ]
+  if (sort === 'Best match') items.sort((a, b) => fit(me!, b) - fit(me!, a))
   const feed = useFeedWheel()
-  // The interest and saved filters live behind the filter button; a short line says which ones are on.
-  const active = [category !== 'All' && category, budget !== 'Any price' && budget, savedOnly && 'Saved'].filter(
-    Boolean,
-  )
+  // Filters live behind the filter button; a short line says which ones are on.
+  const active = [
+    place !== 'Anywhere' && place,
+    category !== 'All' && category,
+    budget !== 'Any price' && budget,
+    sort !== 'Best match' && sort,
+    savedOnly && 'Saved',
+  ].filter(Boolean)
   const clear = () => {
     setSearch('')
     setPlace('Anywhere')
     setCategory('All')
     setBudget('Any price')
+    setSort('Best match')
     setSavedOnly(false)
   }
   // The top stays small (logo row, one heading line with the mascot, search) so the feed gets the screen.
@@ -113,22 +130,12 @@ export default function Discover() {
             {active.length > 0 && <span className="filter-dot" aria-label="filters on" />}
           </button>
         </div>
-        <div className="feed-controls">
-          <label>
-            📍
-            <select aria-label="City" value={place} onChange={(e) => setPlace(e.target.value)}>
-              {places.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            ↕
-            <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-              <option>For you</option>
-              <option>Soonest</option>
-            </select>
-          </label>
+        <div className="feed-tabs" role="group" aria-label="Show">
+          {['For you', 'Events', 'Groups', 'Unfinished'].map((t) => (
+            <button key={t} className={t === tab ? 'selected' : ''} aria-pressed={t === tab} onClick={() => setTab(t)}>
+              {t}
+            </button>
+          ))}
         </div>
         {active.length > 0 && (
           <button className="text-button filter-line" onClick={clear}>
@@ -136,15 +143,44 @@ export default function Discover() {
           </button>
         )}
       </div>
-      <div className="discover-feed" ref={feed} aria-label="Events and communities" tabIndex={0}>
+      <div className="discover-feed" ref={feed} aria-label={tab} tabIndex={0}>
+        {tab === 'Unfinished' && (
+          <div className="graveyard-intro">
+            <Mascot name="loop" />
+            <div>
+              <h2>The Idea Graveyard</h2>
+              <p>
+                Ideas don’t have to die because their maker got stuck. Help one, or adopt it and give it a second life.
+              </p>
+              <Link className="text-button" to="/create?kind=project">
+                🪦 Lay your own idea to rest →
+              </Link>
+            </div>
+          </div>
+        )}
+        {featured && (
+          <>
+            <h2 className="section-title">🪦 Something worth picking up</h2>
+            <ProjectCard group={featured} why={whyForYou(me!, { group: featured })} compact />
+          </>
+        )}
         {items.length ? (
           items.map((item) =>
             'event' in item ? (
               <EventCard key={item.event.id} event={item.event} why={whyForYou(me!, item)} />
+            ) : item.group.project ? (
+              <ProjectCard key={item.group.id} group={item.group} why={whyForYou(me!, item)} />
             ) : (
               <GroupCard key={item.group.id} group={item.group} why={whyForYou(me!, item)} />
             ),
           )
+        ) : tab === 'Unfinished' && !active.length && !search ? (
+          <Empty>
+            Nothing resting here yet. Got an idea you couldn’t finish? It deserves a second chance.
+            <Link className="button lime" to="/create?kind=project">
+              Lay it to rest →
+            </Link>
+          </Empty>
         ) : (
           <Empty>
             Nothing found. Try another search or filter.
@@ -156,6 +192,10 @@ export default function Discover() {
       </div>
       {filters && (
         <Modal title="Find your people" onClose={() => setFilters(false)}>
+          <h2 className="section-title">Where</h2>
+          <Chips label="Where" values={places} value={place} onChange={setPlace} />
+          <h2 className="section-title">Sort</h2>
+          <Chips label="Sort" values={['Best match', 'Soonest']} value={sort} onChange={setSort} />
           <h2 className="section-title">Interests</h2>
           <Chips label="Interests" values={['All', ...INTERESTS]} value={category} onChange={setCategory} />
           <h2 className="section-title">Budget</h2>

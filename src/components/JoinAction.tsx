@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { Modal } from './UI'
 import { api } from '../api'
-export default function JoinAction({ id }: { id: string }) {
+// `help`: an unfinished project in the Idea Graveyard, where joining means offering to help.
+export default function JoinAction({ id, help }: { id: string; help?: boolean }) {
   const { membership, join, refresh } = useApp()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
@@ -25,12 +26,14 @@ export default function JoinAction({ id }: { id: string }) {
     <>
       {state === 'joined' ? (
         <Link className="button primary" to={'/groups/' + id}>
-          Joined · Open community →
+          {help ? 'You’re helping · Open the project →' : 'Joined · Open community →'}
         </Link>
       ) : state === 'pending' ? (
         <>
           <div className="notice mint" role="status">
-            Pending · A hello in progress. The host will get back to you.
+            {help
+              ? 'Offer sent · The owner will get back to you.'
+              : 'Pending · A hello in progress. The host will get back to you.'}
           </div>
           <button
             className="text-button"
@@ -43,11 +46,11 @@ export default function JoinAction({ id }: { id: string }) {
         </>
       ) : (
         <button className="button primary" onClick={() => setOpen(true)}>
-          Request to join →
+          {help ? 'Offer to help →' : 'Request to join →'}
         </button>
       )}
       {open && (
-        <Modal title="Say a little hello" onClose={() => setOpen(false)}>
+        <Modal title={help ? 'How could you help?' : 'Say a little hello'} onClose={() => setOpen(false)}>
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -55,7 +58,7 @@ export default function JoinAction({ id }: { id: string }) {
             }}
           >
             <label>
-              What are you excited to bring?
+              {help ? 'What can you bring? Skills, time, ideas…' : 'What are you excited to bring?'}
               <textarea name="intro" required maxLength={300} />
             </label>
             <label className="check-row">
@@ -67,7 +70,7 @@ export default function JoinAction({ id }: { id: string }) {
               </p>
             )}
             <button className="button primary" disabled={busy}>
-              {busy ? 'Sending…' : 'Send join request →'}
+              {busy ? 'Sending…' : help ? 'Send my offer →' : 'Send join request →'}
             </button>
           </form>
         </Modal>

@@ -6,6 +6,9 @@ import { Avatar, Chips, Empty, Modal } from './UI'
 import EventCard from './EventCard'
 import MemoryCard from './MemoryCard'
 import CrewPlan from './CrewPlan'
+import { ProjectHistory } from './ProjectCard'
+import { STATUS } from '../projects'
+import type { Project } from '../types'
 import { aboutInterest, INTERESTS } from '../interests'
 import EventDetails from './EventDetails'
 import Chat from './Chat'
@@ -21,12 +24,17 @@ export default function GroupWorkspace({ id }: { id: string }) {
     ? ['Event', 'Chat', 'Plan', 'Members']
     : group?.forEvent
       ? ['Event', 'Chat', 'Members']
-      : ['Upcoming', 'Chat', 'Members']
+      : group?.project
+        ? ['Project', 'Chat', 'Members']
+        : ['Upcoming', 'Chat', 'Members']
   const tab = sections.includes(params.get('tab') || '') ? params.get('tab')! : sections[0]
   const event = useApi<EventItem>(group?.forEvent ? '/events/for-group/' + id : null)
   const host = group?.ownerId === me!.id
   // A community's Upcoming tab: published events about its interest, near it (or online).
-  const allEvents = useApi<EventItem[]>(group && !group.forEvent ? '/events' : null)
+  const allEvents = useApi<EventItem[]>(group && !group.forEvent && !group.project ? '/events' : null)
+  const adoptions = useApi<{ id: string; name: string; note: string }[]>(
+    host && group?.project ? '/groups/' + id + '/adoptions' : null,
+  )
   const upcoming = (allEvents.data ?? []).filter(
     (e) =>
       aboutInterest(group!.category, e) &&
@@ -58,7 +66,13 @@ export default function GroupWorkspace({ id }: { id: string }) {
       members,
     )
   if (!group) return <Empty>Group not found.</Empty>
-  const kind = group.crewFor ? 'your crew' : group.forEvent ? 'general chat' : 'community'
+  const kind = group.crewFor
+    ? 'your crew'
+    : group.forEvent
+      ? 'general chat'
+      : group.project
+        ? 'unfinished project'
+        : 'community'
   // The pinned plan; a crew's starts as the meeting plan its organizer wrote.
   const pinned = group.pinned || (group.crewFor ? 'Meeting: ' + group.description : '')
   const over = Boolean(group.crewFor && event.data && new Date(event.data.date) < new Date())
@@ -201,6 +215,68 @@ export default function GroupWorkspace({ id }: { id: string }) {
       {tab === 'Plan' && members.data && (
         <CrewPlan group={group} city={event.data?.city ?? ''} members={members.data} onArea={members.reload} />
       )}
+      {tab === 'Project' && group.project && (
+        <>
+          <Link className="button" to={'/posts/' + id}>
+            See its public page →
+          </Link>
+          {host && (
+            <>
+              <h2 className="section-title">Where does it stand?</h2>
+              <Chips
+                label="Project status"
+                values={Object.values(STATUS)}
+                value={STATUS[group.project.status]}
+                onChange={(v) =>
+                  run(
+                    api('/groups/' + id + '/project', {
+                      method: 'PUT',
+                      body: { status: (Object.keys(STATUS) as Project['status'][]).find((k) => STATUS[k] === v) },
+                    }).then(refresh),
+                  )
+                }
+              />
+              {!!adoptions.data?.length && <h2 className="section-title">Want to adopt it</h2>}
+              {adoptions.data?.map((a) => (
+                <article className="notice lilac" key={a.id}>
+                  <Link className="member-row" to={'/users/' + a.id}>
+                    <Avatar id={a.id} name={a.name} />
+                    <span>
+                      <strong>{a.name}</strong>
+                      <small>see profile →</small>
+                    </span>
+                  </Link>
+                  <p>{a.note}</p>
+                  <div className="two-actions">
+                    {(['decline', 'accept'] as const).map((decision) => (
+                      <button
+                        key={decision}
+                        className={'button' + (decision === 'accept' ? ' lime' : '')}
+                        onClick={() =>
+                          (decision === 'decline' ||
+                            confirm(
+                              `Hand ${group.name} over to ${a.name}? They become its owner; you stay a member.`,
+                            )) &&
+                          run(
+                            api('/groups/' + id + '/adoptions/' + a.id, { method: 'POST', body: { decision } }).then(
+                              refresh,
+                            ),
+                            adoptions,
+                            members,
+                          )
+                        }
+                      >
+                        {decision === 'accept' ? 'Hand it over' : 'Not now'}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </>
+          )}
+          <ProjectHistory id={id} />
+        </>
+      )}
       {tab === 'Upcoming' && (
         <>
           <p className="hint">
@@ -276,7 +352,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
                   )
               }
             >
-              Leave {group.forEvent ? 'chat' : 'community'}
+              Leave {group.forEvent ? 'chat' : group.project ? 'project' : 'community'}
             </button>
           )}
         </>

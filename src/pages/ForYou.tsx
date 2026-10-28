@@ -9,7 +9,7 @@ export default function ForYou() {
   const { me, groups, membership, join } = useApp()
   const [busy, setBusy] = useState('')
   const matches = groups.filter(
-    (g) => !g.forEvent && g.spots > 0 && g.ownerId !== me!.id && whyForYou(me!, { group: g }),
+    (g) => !g.forEvent && !g.project && g.spots > 0 && g.ownerId !== me!.id && whyForYou(me!, { group: g }),
   )
   async function ask(id: string, category: string) {
     setBusy(id)

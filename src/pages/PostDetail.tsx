@@ -6,6 +6,7 @@ import JoinAction from '../components/JoinAction'
 import { Avatar, Empty } from '../components/UI'
 import { useApi } from '../api'
 import type { EventItem } from '../types'
+import ProjectPage from '../components/ProjectPage'
 export default function PostDetail() {
   const { id } = useParams()
   const { groups, saved, save } = useApp()
@@ -15,6 +16,7 @@ export default function PostDetail() {
   if (!group) return <NotFound type="Post" />
   if (event.data) return <Navigate replace to={'/events/' + event.data.id} />
   if (group.forEvent && !event.error) return <Empty>Loading…</Empty>
+  if (group.project) return <ProjectPage group={group} />
   return (
     <>
       <DetailHeader title="Find your people" fallback="/" />

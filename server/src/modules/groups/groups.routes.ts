@@ -1,9 +1,11 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { photoSchema, savePhoto, sendPhoto } from '../../photos.ts'
 import { answerStillComing, imHere } from '../events/events.going.ts'
 import {
+  adoptSchema,
   areaSchema,
   comingSchema,
   createGroupSchema,
@@ -11,8 +13,14 @@ import {
   keepCrewSchema,
   listQuerySchema,
   pinnedSchema,
+  projectStatusSchema,
 } from './groups.schema.ts'
 import {
+  adoptionRequests,
+  askToAdopt,
+  decideAdoption,
+  projectHistory,
+  setProjectStatus,
   addExpense,
   announceGroup,
   createGroup,
@@ -109,5 +117,29 @@ groupRoutes.put('/:id/coming', requireAuth, (req: any, res) => {
 
 groupRoutes.post('/:id/here', requireAuth, (req: any, res) => {
   imHere(req.params.id, req.user.id)
+  res.status(204).end()
+})
+
+// The Idea Graveyard: a project's story is public, like the project itself.
+groupRoutes.get('/:id/history', (req, res) => {
+  res.json(projectHistory(req.params.id))
+})
+
+groupRoutes.post('/:id/adopt', requireAuth, (req: any, res) => {
+  res.json({ status: askToAdopt(req.params.id, req.user.id, adoptSchema.parse(req.body).note) })
+})
+
+groupRoutes.get('/:id/adoptions', requireAuth, (req: any, res) => {
+  res.json(adoptionRequests(req.params.id, req.user.id))
+})
+
+groupRoutes.post('/:id/adoptions/:userId', requireAuth, (req: any, res) => {
+  const accept = z.object({ decision: z.enum(['accept', 'decline']) }).parse(req.body).decision === 'accept'
+  decideAdoption(req.params.id, req.user.id, req.params.userId, accept)
+  res.status(204).end()
+})
+
+groupRoutes.put('/:id/project', requireAuth, (req: any, res) => {
+  setProjectStatus(req.params.id, req.user.id, projectStatusSchema.parse(req.body).status)
   res.status(204).end()
 })

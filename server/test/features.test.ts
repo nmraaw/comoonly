@@ -425,3 +425,64 @@ test('event day: still coming, I’m here, and the show-up score that stays afte
   assert.deepEqual((await get('/users/zain', hira)).showedUp, { showed: 1, crews: 1 })
   assert.deepEqual((await get('/users/nm', hira)).showedUp, { showed: 0, crews: 1 })
 })
+
+test('idea graveyard: post an unfinished idea, get help, hand it over, keep the original credit', async () => {
+  const [hira, zain, noor] = await Promise.all(['hira', 'zain', 'noor'].map((u) => loginAs(u)))
+  const idea = {
+    name: 'Bus times for Sialkot',
+    description: 'Live bus times from people on the bus.',
+    category: 'Tech',
+    mode: 'Online',
+    location: 'Online',
+    spots: 3,
+    project: { stage: 'prototype', stopped: 'skills', story: 'Never learned the backend.', needs: ['Code'] },
+  }
+  assert.equal(await status('/groups', json({ ...idea, project: { ...idea.project, stage: 'done' } }, hira)), 400)
+  const posted = await (await fetch(`${base}/groups`, json(idea, hira))).json()
+  assert.deepEqual(
+    [posted.project.status, posted.project.startedById, posted.project.needs, posted.project.freeToAdopt],
+    ['resting', 'hira', ['Code'], false],
+  )
+  // Zain likes Tech: he hears about it.
+  assert.match((await get('/notifications', zain))[0].text, /An unfinished Tech idea needs a second life/)
+
+  // Offering help is a join request; accepting it starts the revival.
+  await fetch(`${base}/groups/${posted.id}/requests`, json({ intro: 'I can do the backend' }, zain))
+  await fetch(`${base}/groups/${posted.id}/requests/zain`, json({ decision: 'accept' }, hira))
+  assert.equal((await get(`/groups/${posted.id}`)).project.status, 'reviving')
+
+  // Adopting asks the owner; once accepted, the new owner runs it and the creator stays credited.
+  assert.equal(await status(`/groups/${posted.id}/adopt`, json({ note: 'mine' }, hira)), 409) // already hers
+  assert.deepEqual(
+    await (await fetch(`${base}/groups/${posted.id}/adopt`, json({ note: 'I’ll ship it' }, noor))).json(),
+    {
+      status: 'pending',
+    },
+  )
+  assert.equal(await status(`/groups/${posted.id}/adoptions`, { headers: { cookie: zain } }), 403)
+  assert.equal(await status(`/groups/${posted.id}/adoptions/noor`, json({ decision: 'accept' }, zain)), 403)
+  assert.equal(await status(`/groups/${posted.id}/adoptions/noor`, json({ decision: 'accept' }, hira)), 204)
+  const adopted = await get(`/groups/${posted.id}`)
+  assert.deepEqual(
+    [adopted.ownerId, adopted.project.startedById, adopted.project.startedBy],
+    ['noor', 'hira', 'Hira S.'],
+  )
+  assert.equal((await get('/groups/memberships', hira))[posted.id], 'joined') // the old owner stays on
+
+  assert.equal(await status(`/groups/${posted.id}/project`, json({ status: 'alive' }, hira, 'PUT')), 403)
+  assert.equal(await status(`/groups/${posted.id}/project`, json({ status: 'alive' }, noor, 'PUT')), 204)
+  const story = (await get(`/groups/${posted.id}/history`)).map((h: { emoji: string }) => h.emoji)
+  assert.deepEqual(story, ['🪦', '🤝', '🔁', '✨'])
+
+  // "Free to adopt": yours straight away. Projects never show up as communities.
+  const free = await (
+    await fetch(
+      `${base}/groups`,
+      json({ ...idea, name: 'Free idea', project: { ...idea.project, freeToAdopt: true } }, hira),
+    )
+  ).json()
+  assert.deepEqual(await (await fetch(`${base}/groups/${free.id}/adopt`, json({ note: 'Yes!' }, zain))).json(), {
+    status: 'adopted',
+  })
+  assert.equal((await get(`/groups/${free.id}`)).ownerId, 'zain')
+})

@@ -1267,36 +1267,29 @@ main:has(> .chat) > .chat {
   font-size: 13px;
 }
 
-/* Discover: city and sort, side by side under the search. */
-.feed-controls {
+/* Discover: what to show, as a row of tabs under the search. */
+.feed-tabs {
   display: flex;
-  gap: 8px;
-  margin: 0 0 8px;
-}
-.feed-controls label {
-  display: flex;
-  margin: 0;
-  align-items: center;
   gap: 4px;
-  flex: 1;
-  min-width: 0;
-  padding: 0 12px;
-  border-radius: 22px;
-  background: white;
-  font-size: 13px;
-  font-weight: 700;
+  margin: 0 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.feed-controls select {
-  flex: 1;
-  min-width: 0;
-  min-height: 40px;
-  height: 40px;
-  margin: 0;
-  padding: 0 4px;
+.feed-tabs button {
+  flex: none;
   border: 0;
+  border-radius: 20px;
+  padding: 9px 12px;
   background: transparent;
+  color: var(--muted);
   font: inherit;
-  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.feed-tabs button.selected {
+  background: var(--ink);
+  color: var(--lime);
 }
 /* Which kind of thing a feed card is. */
 .kind-label {
@@ -1451,4 +1444,86 @@ main:has(> .chat) > .chat {
   margin: 0;
   padding-left: 18px;
   font-size: 14px;
+}
+
+/* The Idea Graveyard: same cards, a softer grey label, a 4-step progress bar. */
+.kind-label.project {
+  background: #e4e1ea;
+}
+.kind-label.project.reviving {
+  background: #d6f0dc;
+}
+.kind-label.project.alive {
+  background: var(--lime);
+}
+.project-card .credit {
+  display: block;
+  margin: -4px 0 10px;
+  color: var(--muted);
+}
+.progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.progress span {
+  height: 8px;
+  border-radius: 4px;
+  background: #e4e1ea;
+}
+.progress span.done {
+  background: var(--ink);
+}
+.project-card .stopped,
+.project-card .needs {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.project-card .stopped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.project-card.compact {
+  padding-top: 18px;
+}
+.graveyard-intro {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #e4e1ea, var(--lilac));
+}
+.graveyard-intro .mascot {
+  width: 72px;
+  flex: none;
+}
+.graveyard-intro h2 {
+  margin: 0 0 4px;
+}
+.graveyard-intro p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.timeline li {
+  display: flex;
+  gap: 10px;
+}
+.timeline small {
+  display: block;
+  color: var(--muted);
+}
+.project-facts p {
+  margin: 8px 0 0;
 }
