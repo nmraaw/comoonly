@@ -25,6 +25,8 @@ app.use(
     '/api/groups/:id/photo',
     '/api/groups/:id/messages/voice',
     '/api/messages/with/:userId/voice',
+    '/api/groups/:id/messages/photo',
+    '/api/messages/with/:userId/photo',
   ],
   express.json({ limit: '8mb' }),
 )

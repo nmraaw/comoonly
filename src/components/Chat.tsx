@@ -4,6 +4,7 @@ import type { Message } from '../types'
 import { api, useApi } from '../api'
 import Icon from './Icon'
 import { Modal } from './UI'
+import { shrink } from '../images'
 
 // The 🎲 button drops one of these into a group chat, to get strangers talking.
 const ICEBREAKERS = [
@@ -101,6 +102,18 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
     }
   }
 
+  async function sendPhoto(file: File) {
+    setSending(true)
+    try {
+      await api(path + '/photo', { method: 'POST', body: { image: await shrink(file) } })
+      reload()
+      onSent?.()
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setSending(false)
+    }
+  }
   async function vote(messageId: string, choice: number) {
     await api('/messages/' + messageId + '/vote', { method: 'POST', body: { choice } }).catch((err) =>
       alert(err.message),
@@ -153,6 +166,8 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
             </strong>
             {message.voice ? (
               <audio controls preload="none" src={'/api/voice/' + message.id} />
+            ) : message.photo ? (
+              <img className="chat-photo" src={'/api/chat-photos/' + message.id} alt="Photo" loading="lazy" />
             ) : (
               <p className={message.text.startsWith('🎲') ? 'icebreaker' : undefined}>{message.text}</p>
             )}
@@ -178,19 +193,37 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
           </div>
         ))}
       </div>
-      {group && !recorder && (
+      {!recorder && (
         <div className="chat-tools">
-          <button type="button" className="chip" onClick={() => setPolling(true)}>
-            📊 Poll
-          </button>
-          <button
-            type="button"
-            className="chip"
-            disabled={sending}
-            onClick={() => send('🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)])}
-          >
-            🎲 Icebreaker
-          </button>
+          <label className="chip">
+            📷 Photo
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              disabled={sending}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) sendPhoto(file)
+              }}
+            />
+          </label>
+          {group && (
+            <>
+              <button type="button" className="chip" onClick={() => setPolling(true)}>
+                📊 Poll
+              </button>
+              <button
+                type="button"
+                className="chip"
+                disabled={sending}
+                onClick={() => send('🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)])}
+              >
+                🎲 Icebreaker
+              </button>
+            </>
+          )}
         </div>
       )}
       {polling && (

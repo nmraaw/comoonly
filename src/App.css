@@ -1380,3 +1380,36 @@ main:has(> .chat) > .chat {
 .notice.match {
   background: linear-gradient(135deg, var(--lime), var(--lilac));
 }
+.chat-tools label.chip {
+  margin: 0;
+  min-height: 36px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.chat-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin-top: 4px;
+  border-radius: 14px;
+}
+/* Who's going: blurred placeholders until you're going too. */
+.going-list {
+  display: grid;
+  gap: 8px;
+}
+.crew.locked .avatar {
+  filter: blur(3px);
+  background: linear-gradient(135deg, var(--lilac), var(--lime));
+}
+.going-people {
+  display: grid;
+  gap: 4px;
+}
+.memory-card {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 18px;
+}

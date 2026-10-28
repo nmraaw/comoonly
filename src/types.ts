@@ -54,6 +54,7 @@ export type Message = {
   text: string
   createdAt: number
   voice: 0 | 1
+  photo: 0 | 1 // a photo; it shows from /api/chat-photos/:id
   poll?: string[]
   votes?: { userId: string; choice: number }[]
 }

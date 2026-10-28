@@ -77,6 +77,22 @@ export function intentsOf(userId: string) {
   return new Map<string, Intent>(rows.map((r) => [r.event_id, r.intent]))
 }
 
+// Who's going (looking for company or happy to meet people), like Partiful's guest list: it unlocks once
+// you say you're going yourself. Before that, only how many. People who block each other don't see each other.
+export function whoIsGoing(eventId: string, userId: string) {
+  publishedEvent(eventId)
+  const people = db
+    .prepare(
+      `SELECT u.id, u.name FROM event_going g JOIN users u ON u.id = g.user_id
+       WHERE g.event_id = ? AND g.intent IN ('company', 'meet') AND u.id != ?
+         AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = ?)
+         AND u.id NOT IN (SELECT blocker_id FROM blocks WHERE blocked_id = ?)
+       ORDER BY g.created_at`,
+    )
+    .all(eventId, userId, userId, userId)
+  return intentOf(eventId, userId) ? { locked: false, people } : { locked: true, count: people.length }
+}
+
 // An event's crews. Women-only ones are only shown to women.
 export function listCrews(eventId: string, userId: string) {
   const isWoman = findUser(userId).gender === 'woman'

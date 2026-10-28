@@ -4,6 +4,7 @@ import { useApp } from '../state/AppContext'
 import type { EventItem } from '../types'
 import { Avatar, Chips, Empty, Modal } from './UI'
 import EventCard from './EventCard'
+import MemoryCard from './MemoryCard'
 import { aboutInterest, INTERESTS } from '../interests'
 import EventDetails from './EventDetails'
 import Chat from './Chat'
@@ -28,6 +29,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
   )
   const [editing, setEditing] = useState(false)
   const [keeping, setKeeping] = useState(false)
+  const [memory, setMemory] = useState(false)
   const [interest, setInterest] = useState('Meetups')
   const members = useApi<{ id: string; name: string; role: string }[]>('/groups/' + id + '/members')
   const requests = useApi<{ id: string; name: string; city: string; intro: string }[]>(
@@ -114,7 +116,13 @@ export default function GroupWorkspace({ id }: { id: string }) {
               Keep this crew going →
             </button>
           )}
+          <button className="button" onClick={() => setMemory(true)}>
+            📸 Make our memory card
+          </button>
         </article>
+      )}
+      {memory && event.data && members.data && (
+        <MemoryCard group={group} event={event.data} people={members.data} onClose={() => setMemory(false)} />
       )}
       {keeping && (
         <Modal title="Keep the crew going" onClose={() => setKeeping(false)}>

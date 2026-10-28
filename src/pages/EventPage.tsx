@@ -33,6 +33,9 @@ export default function EventPage() {
   const [error, setError] = useState('')
   const match = useApi<{ waiting: boolean; total: number }>('/events/' + encodeURIComponent(id!) + '/match')
   const [onlyWomen, setOnlyWomen] = useState(false)
+  const going = useApi<{ locked: boolean; count?: number; people?: { id: string; name: string }[] }>(
+    '/events/' + encodeURIComponent(id!) + '/going',
+  )
   if (event.error) return <NotFound type="Event" to="/events" />
   const e = event.data
   if (!e) return <Empty>Loading…</Empty>
@@ -47,6 +50,7 @@ export default function EventPage() {
       event.reload()
       crews.reload()
       match.reload()
+      going.reload()
       return true
     } catch (err) {
       setError((err as Error).message)
@@ -82,6 +86,36 @@ export default function EventPage() {
         after={
           <>
             <h2 className="section-title">Go together</h2>
+            {/* Who's going unlocks once you say you're going too (the server keeps it locked). */}
+            {going.data && (going.data.locked ? !!going.data.count : !!going.data.people?.length) && (
+              <div className="notice going-list">
+                <strong>👀 Who’s going</strong>
+                {going.data.locked ? (
+                  <>
+                    <div className="crew locked" aria-hidden="true">
+                      {Array.from({ length: Math.min(going.data.count!, 5) }, (_, i) => (
+                        <span className="avatar" key={i} />
+                      ))}
+                    </div>
+                    <small>
+                      {going.data.count} {going.data.count === 1 ? 'person' : 'people'} from Comoonly. Tap “I want to
+                      go” to see who.
+                    </small>
+                  </>
+                ) : (
+                  <div className="going-people">
+                    {going.data.people!.map((p) => (
+                      <Link key={p.id} className="member-row" to={'/users/' + p.id}>
+                        <Avatar id={p.id} name={p.name} />
+                        <span>
+                          <strong>{p.name}</strong>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="notice info-rows">
               <p>
                 <strong>💬 General chat</strong> · one big group chat for everyone from Comoonly at this event. Say hi,

@@ -10,6 +10,7 @@ const LIMIT = 200 // newest 200 messages per conversation is plenty for small gr
 
 const SELECT = `SELECT m.id, m.author_id AS authorId, u.name AS author, m.text, m.created_at AS createdAt,
     EXISTS (SELECT 1 FROM message_audio a WHERE a.message_id = m.id) AS voice,
+    EXISTS (SELECT 1 FROM message_photos p WHERE p.message_id = m.id) AS photo,
     (SELECT options FROM polls p WHERE p.message_id = m.id) AS poll,
     (SELECT json_group_array(json_object('userId', v.user_id, 'choice', v.choice))
        FROM poll_votes v WHERE v.message_id = m.id) AS votes
@@ -157,8 +158,9 @@ export function conversations(userId: string) {
 }
 
 export const VOICE_TEXT = '🎤 Voice message'
+export const PHOTO_TEXT = '📷 Photo'
 
-// Who may hear a voice message: the group's members, or the two people in a private chat.
+// Who may hear a voice message or see a chat photo: the group's members, or the two people in a private chat.
 export function requireCanHear(messageId: string, userId: string) {
   const m: any = db.prepare('SELECT group_id, author_id, to_id FROM messages WHERE id = ?').get(messageId)
   if (!m) throw new HttpError(404, 'Message not found')

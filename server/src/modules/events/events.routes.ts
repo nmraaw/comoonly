@@ -20,6 +20,7 @@ import {
   matchStatus,
   notGoing,
   stopMatching,
+  whoIsGoing,
 } from './events.going.ts'
 import {
   deleteEvent,
@@ -67,6 +68,10 @@ eventRoutes.post('/:id/crews', requireAuth, (req: any, res) => {
 // "Find me a crew": joins the best open crew (a request), forms a new one, or waits for more people.
 eventRoutes.post('/:id/match', requireAuth, (req: any, res) => {
   res.json(findMeACrew(req.params.id, req.user.id, matchSchema.parse(req.body).womenOnly))
+})
+
+eventRoutes.get('/:id/going', requireAuth, (req: any, res) => {
+  res.json(whoIsGoing(req.params.id, req.user.id))
 })
 
 eventRoutes.get('/:id/match', requireAuth, (req: any, res) => {

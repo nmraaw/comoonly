@@ -322,3 +322,31 @@ test('find me a crew: waits, forms a crew from the best matches, then sends newc
   const [request] = await get(`/groups/${formed.crewId}/requests`, organizer)
   assert.deepEqual([request.id, /Matched by Comoonly/.test(request.intro)], ['areeba', true])
 })
+
+test('chat photos are for the people in the chat; who’s going unlocks once you’re going', async () => {
+  const [sara, hamza, zain, noor] = await Promise.all(['sara', 'hamza', 'zain', 'noor'].map((u) => loginAs(u)))
+  const image = 'data:image/png;base64,iVBORw0KGgo='
+  const sent = await (await fetch(`${base}/groups/film-club/messages/photo`, json({ image }, sara))).json() // Sara hosts
+  assert.deepEqual([sent.text, sent.photo], ['📷 Photo', 1])
+  assert.equal((await get('/groups/film-club/messages', sara)).at(-1).photo, 1)
+  assert.equal(await status(`/chat-photos/${sent.id}`, { headers: { cookie: sara } }), 200)
+  assert.equal(await status(`/chat-photos/${sent.id}`, { headers: { cookie: zain } }), 403) // not in the group
+  assert.equal(await status('/groups/film-club/messages/photo', json({ image: 'data:text/html;base64,AA' }, sara)), 400)
+
+  const event = {
+    title: 'Board game night',
+    date: '2031-05-01T19:00',
+    city: 'Sialkot',
+    category: 'Games',
+    registerUrl: 'https://games.test/1',
+    sourceUrl: 'https://games.test',
+  }
+  await fetch(`${base}/events`, json(event, sara))
+  const { id } = (await get('/events', zain)).find((e: { title: string }) => e.title === event.title)
+  await fetch(`${base}/events/${id}/go`, json({ intent: 'company' }, hamza))
+  await fetch(`${base}/events/${id}/go`, json({ intent: 'friends' }, noor)) // with friends: not on the list
+  assert.deepEqual(await get(`/events/${id}/going`, zain), { locked: true, count: 1 })
+  await fetch(`${base}/events/${id}/go`, json({ intent: 'meet' }, zain))
+  const going = await get(`/events/${id}/going`, zain)
+  assert.deepEqual([going.locked, going.people.map((p: { id: string }) => p.id)], [false, ['hamza']])
+})

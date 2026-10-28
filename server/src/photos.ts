@@ -30,6 +30,7 @@ const TABLES = {
   user: ['user_photos', 'user_id'],
   group: ['group_photos', 'group_id'],
   voice: ['message_audio', 'message_id'], // voice messages: same storage, sound instead of a picture
+  chat: ['message_photos', 'message_id'], // photos sent in a chat
 } as const
 type Kind = keyof typeof TABLES
 

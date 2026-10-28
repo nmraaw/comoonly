@@ -9,10 +9,11 @@ import {
   requireCanHear,
   sendDirect,
   sendToGroup,
+  PHOTO_TEXT,
   VOICE_TEXT,
   vote,
 } from './chat.service.ts'
-import { savePhoto, sendPhoto, voiceSchema } from '../../photos.ts'
+import { photoSchema, savePhoto, sendPhoto, voiceSchema } from '../../photos.ts'
 
 // Mounted at /api. Group chat is for members; anyone can message anyone (see sendDirect for requests).
 export const chatRoutes = Router()
@@ -50,6 +51,26 @@ chatRoutes.post('/messages/with/:userId/voice', requireAuth, (req: any, res) => 
   const message: any = sendDirect(req.user.id, req.params.userId, VOICE_TEXT)
   savePhoto('voice', message.id, audio)
   res.status(201).json({ ...message, voice: 1 })
+})
+
+// Photos: sent like voice messages ("📷 Photo"), the picture kept beside the message.
+chatRoutes.post('/groups/:id/messages/photo', requireAuth, (req: any, res) => {
+  const { image } = photoSchema.parse(req.body)
+  const message: any = sendToGroup(req.params.id, req.user.id, PHOTO_TEXT)
+  savePhoto('chat', message.id, image)
+  res.status(201).json({ ...message, photo: 1 })
+})
+
+chatRoutes.post('/messages/with/:userId/photo', requireAuth, (req: any, res) => {
+  const { image } = photoSchema.parse(req.body)
+  const message: any = sendDirect(req.user.id, req.params.userId, PHOTO_TEXT)
+  savePhoto('chat', message.id, image)
+  res.status(201).json({ ...message, photo: 1 })
+})
+
+chatRoutes.get('/chat-photos/:messageId', requireAuth, (req: any, res) => {
+  requireCanHear(req.params.messageId, req.user.id)
+  sendPhoto(res, 'chat', req.params.messageId)
 })
 
 chatRoutes.get('/voice/:messageId', requireAuth, (req: any, res) => {
