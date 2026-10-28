@@ -66,6 +66,9 @@ export const crewSchema = z.object({
   area: z.string().trim().max(80).default(''), // where you're coming from, e.g. "Gulshan"
 })
 
+// "Find me a crew": optionally only with other women.
+export const matchSchema = z.object({ womenOnly: z.boolean().default(false) })
+
 export type Intent = z.infer<typeof goSchema>['intent']
 export type CrewInput = z.infer<typeof crewSchema>
 export type EventInput = z.infer<typeof eventSchema>

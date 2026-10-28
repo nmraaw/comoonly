@@ -3,6 +3,8 @@ import { HttpError } from '../../middleware/errors.ts'
 import { findUser, requireVerified } from '../auth/auth.service.ts'
 import { createGroup, getGroup, isMember } from '../groups/groups.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
+import { requestToJoin } from '../requests/requests.service.ts'
+import { isBlocked } from '../safety/safety.service.ts'
 import { getEvent } from './events.service.ts'
 import type { CrewInput, Intent } from './events.schema.ts'
 
@@ -54,6 +56,7 @@ export function notGoing(eventId: string, userId: string) {
   const event = getEvent(eventId)
   transaction(() => {
     db.prepare('DELETE FROM event_going WHERE event_id = ? AND user_id = ?').run(eventId, userId)
+    db.prepare('DELETE FROM crew_match WHERE event_id = ? AND user_id = ?').run(eventId, userId)
     if (event.groupId)
       db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND user_id != ?').run(
         event.groupId,
@@ -147,4 +150,117 @@ export function followUpCrews() {
     db.prepare('UPDATE events SET followed_up = 1 WHERE id = ?').run(event.id)
   }
   return events.length
+}
+
+// "Find me a crew", like Timeleft's dinners: instead of picking strangers yourself, Comoonly picks the people
+// you have most in common with. First it looks for an open crew for this event (its organizer still says yes);
+// with none, you wait, and once 3 people are waiting a crew of up to 4 is formed from the best matches.
+const MATCH_MIN = 3
+const MATCH_MAX = 4
+
+const shared = (a: string[], b: string[]) => a.filter((x) => b.includes(x))
+
+export function findMeACrew(eventId: string, userId: string, womenOnly: boolean) {
+  const event = publishedEvent(eventId)
+  requireVerified(userId)
+  const me = findUser(userId)
+  if (womenOnly && me.gender !== 'woman') throw new HttpError(403, 'Only women can ask for a women-only crew')
+  if (inCrew(eventId, userId)) throw new HttpError(409, 'You’re already in a crew for this event')
+  return transaction(() => {
+    if (!intentOf(eventId, userId)) goTo(eventId, userId, 'company') // being matched means you're going
+
+    // 1. An open crew you can join: the one whose people share most of your interests.
+    const crews = listCrews(eventId, userId).filter(
+      (c: any) => !c.myStatus && c.members < c.size && (!womenOnly || c.womenOnly) && !isBlocked(c.ownerId, userId),
+    )
+    let best: { id: string; together: string[] } | undefined
+    for (const crew of crews) {
+      const together = [...new Set(membersOf(crew.id).flatMap((m) => shared(me.interests, findUser(m).interests)))]
+      if (!best || together.length > best.together.length) best = { id: crew.id, together }
+    }
+    if (best) {
+      const why = best.together.length ? ` · you both like ${best.together.slice(0, 2).join(' and ')}` : ''
+      requestToJoin(best.id, userId, `✨ Matched by Comoonly${why}. Hi, I’d love to come with you!`)
+      return { result: 'requested' as const, crewId: best.id }
+    }
+
+    // 2. No open crew: wait, and form a new crew once enough people are waiting.
+    db.prepare(
+      `INSERT INTO crew_match (event_id, user_id, women_only, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (event_id, user_id) DO UPDATE SET women_only = excluded.women_only`,
+    ).run(eventId, userId, womenOnly ? 1 : 0, Date.now())
+    const waiting = (
+      db
+        .prepare(
+          'SELECT user_id FROM crew_match WHERE event_id = ? AND women_only = ? AND user_id != ? ORDER BY created_at',
+        )
+        .all(eventId, womenOnly ? 1 : 0, userId) as { user_id: string }[]
+    )
+      .map((r) => findUser(r.user_id))
+      .filter((u) => !inCrew(eventId, u.id))
+      .sort((a, b) => shared(me.interests, b.interests).length - shared(me.interests, a.interests).length)
+    const chosen = [me]
+    for (const u of waiting)
+      if (chosen.length < MATCH_MAX && chosen.every((c) => !isBlocked(c.id, u.id))) chosen.push(u)
+    if (chosen.length < MATCH_MIN) return { result: 'waiting' as const, waiting: waiting.length + 1 }
+
+    // Someone who was already waiting organizes; everyone asked to be matched, so all join straight away.
+    const [organizer, ...rest] = [...chosen.slice(1), me]
+    const crew = createGroup(organizer.id, {
+      name: `✨ Matched crew · ${event.title}`.slice(0, 70),
+      description: 'Decide together in the chat',
+      category: event.category,
+      mode: event.mode,
+      location: event.city || 'Pakistan',
+      spots: MATCH_MAX - 1,
+    } as any)
+    db.prepare('UPDATE groups SET event_id = ?, women_only = ? WHERE id = ?').run(eventId, womenOnly ? 1 : 0, crew.id)
+    for (const u of rest)
+      db.prepare("INSERT INTO group_members (group_id, user_id, status) VALUES (?, ?, 'joined')").run(crew.id, u.id)
+    for (const u of chosen) db.prepare('DELETE FROM crew_match WHERE event_id = ? AND user_id = ?').run(eventId, u.id)
+    const common = shared(chosen[0].interests, chosen[1].interests)
+    notify(
+      chosen.filter((u) => u.id !== userId).map((u) => u.id),
+      'update',
+      `✨ You’ve been matched into a crew for ${event.title}` +
+        (common.length ? ` (you all like ${common[0]})` : '') +
+        '. Say hi!',
+      `/groups/${crew.id}?tab=Chat`,
+    )
+    return { result: 'matched' as const, crewId: crew.id }
+  })
+}
+
+// Whether you're waiting to be matched for this event, and how many people are waiting in all.
+export function matchStatus(eventId: string, userId: string) {
+  const row: any = db
+    .prepare(
+      `SELECT EXISTS (SELECT 1 FROM crew_match WHERE event_id = ? AND user_id = ?) AS waiting,
+         (SELECT COUNT(*) FROM crew_match WHERE event_id = ?) AS total`,
+    )
+    .get(eventId, userId, eventId)
+  return { waiting: Boolean(row.waiting), total: row.total as number }
+}
+
+export function stopMatching(eventId: string, userId: string) {
+  db.prepare('DELETE FROM crew_match WHERE event_id = ? AND user_id = ?').run(eventId, userId)
+}
+
+function inCrew(eventId: string, userId: string) {
+  return Boolean(
+    db
+      .prepare(
+        `SELECT 1 FROM group_members m JOIN groups g ON g.id = m.group_id
+         WHERE g.event_id = ? AND m.user_id = ? AND m.status IN ('joined', 'pending')`,
+      )
+      .get(eventId, userId),
+  )
+}
+
+function membersOf(groupId: string) {
+  return (
+    db.prepare("SELECT user_id FROM group_members WHERE group_id = ? AND status = 'joined'").all(groupId) as {
+      user_id: string
+    }[]
+  ).map((r) => r.user_id)
 }

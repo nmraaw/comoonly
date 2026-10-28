@@ -263,7 +263,7 @@ test('communities: matching people hear about new ones; pinned plan, polls and v
     location: 'Sialkot',
     spots: 5,
   }
-  assert.equal(await status('/groups', json({ ...community, category: 'Art' }, zain)), 400) // not one of the interests
+  assert.equal(await status('/groups', json({ ...community, category: ' ' }, zain)), 400) // an interest is needed
   const { id } = await (await fetch(`${base}/groups`, json({ ...community, category: 'Drawing' }, zain))).json()
   // Noor likes Drawing and lives in Sialkot; Hamza likes Drawing but is elsewhere.
   assert.match((await get('/notifications', noor))[0].text, /A new Drawing community started in Sialkot: Sketch & chai/)
@@ -284,4 +284,41 @@ test('communities: matching people hear about new ones; pinned plan, polls and v
   assert.equal(await status(`/messages/${poll.id}/vote`, json({ choice: 1 }, zain)), 204) // changing your vote
   const [message] = (await get(`/groups/${id}/messages`, zain)).slice(-1)
   assert.deepEqual(message.votes, [{ userId: 'zain', choice: 1 }])
+})
+
+test('find me a crew: waits, forms a crew from the best matches, then sends newcomers to it', async () => {
+  const { db } = await import('../src/db/connection.ts')
+  db.prepare("UPDATE users SET gender = 'man' WHERE id IN ('zain', 'nm', 'me')").run()
+  db.prepare("UPDATE users SET gender = 'woman' WHERE id = 'areeba'").run()
+  const [sara, zain, nm, me, areeba] = await Promise.all(['sara', 'zain', 'nm', 'me', 'areeba'].map((u) => loginAs(u)))
+  const event = {
+    title: 'Open mic night',
+    date: '2031-03-01T19:00',
+    city: 'Sialkot',
+    category: 'Music',
+    registerUrl: 'https://mic.test/1',
+    sourceUrl: 'https://mic.test',
+  }
+  await fetch(`${base}/events`, json(event, sara))
+  const { id } = (await get('/events', zain)).find((e: { title: string }) => e.title === event.title)
+  const match = (cookie: string, womenOnly = false) => fetch(`${base}/events/${id}/match`, json({ womenOnly }, cookie))
+
+  assert.equal((await match(zain, true)).status, 403) // women-only is for women
+  assert.deepEqual(await (await match(zain)).json(), { result: 'waiting', waiting: 1 })
+  assert.deepEqual(await (await match(nm)).json(), { result: 'waiting', waiting: 2 })
+  assert.deepEqual(await get(`/events/${id}/match`, zain), { waiting: true, total: 2 })
+  const formed = await (await match(me)).json() // the third person: a crew is formed
+  assert.equal(formed.result, 'matched')
+  const [crew] = await get(`/events/${id}/crews`, me)
+  assert.deepEqual([crew.id, crew.members, crew.myStatus], [formed.crewId, 3, 'joined'])
+  assert.match((await get('/notifications', zain))[0].text, /You’ve been matched into a crew for Open mic night/)
+  assert.deepEqual(await get(`/events/${id}/match`, zain), { waiting: false, total: 0 })
+  assert.equal((await match(me)).status, 409) // already in a crew
+  assert.equal((await get('/events', me)).find((e: { id: string }) => e.id === id).myIntent, 'company')
+
+  // Someone new joins the open matched crew, as a request its organizer answers.
+  assert.deepEqual(await (await match(areeba)).json(), { result: 'requested', crewId: formed.crewId })
+  const organizer = await loginAs(crew.ownerId)
+  const [request] = await get(`/groups/${formed.crewId}/requests`, organizer)
+  assert.deepEqual([request.id, /Matched by Comoonly/.test(request.intro)], ['areeba', true])
 })

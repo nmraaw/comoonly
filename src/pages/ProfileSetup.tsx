@@ -14,7 +14,14 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
   const [picked, setPicked] = useState(me!.interests)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const options = [...new Set([...INTERESTS, ...me!.interests])]
+  // "Other": your own interest, like "Chess", picked straight away.
+  const [other, setOther] = useState('')
+  const addOther = () => {
+    const interest = other.trim()
+    if (interest && !picked.some((p) => p.toLowerCase() === interest.toLowerCase())) setPicked((p) => [...p, interest])
+    setOther('')
+  }
+  const options = [...new Set([...INTERESTS, ...me!.interests, ...picked])]
   async function submit(form: HTMLFormElement) {
     const data = new FormData(form)
     setBusy(true)
@@ -135,6 +142,19 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
               {x}
             </button>
           ))}
+        </div>
+        <div className="add-interest">
+          <input
+            value={other}
+            onChange={(e) => setOther(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOther())}
+            maxLength={30}
+            placeholder="Something else? e.g. Chess"
+            aria-label="Add your own interest"
+          />
+          <button type="button" className="button" onClick={addOther}>
+            Add
+          </button>
         </div>
         <p className="hint">Pick at least one. Only share what feels right.</p>
         {error && (

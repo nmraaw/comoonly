@@ -31,6 +31,8 @@ export default function EventPage() {
   const [joining, setJoining] = useState<Crew>()
   const [asking, setAsking] = useState(false) // just said "I want to go": offer the calendar
   const [error, setError] = useState('')
+  const match = useApi<{ waiting: boolean; total: number }>('/events/' + encodeURIComponent(id!) + '/match')
+  const [onlyWomen, setOnlyWomen] = useState(false)
   if (event.error) return <NotFound type="Event" to="/events" />
   const e = event.data
   if (!e) return <Empty>Loading…</Empty>
@@ -44,6 +46,7 @@ export default function EventPage() {
       await refresh()
       event.reload()
       crews.reload()
+      match.reload()
       return true
     } catch (err) {
       setError((err as Error).message)
@@ -101,6 +104,40 @@ export default function EventPage() {
               <Link className="notice pink" to="/me/edit">
                 <strong>Get ✓ Verified</strong> to start or join a crew: finish your profile →
               </Link>
+            )}
+            {me!.verified && crews.data && !crews.data.some((c) => c.myStatus) && (
+              // "Find me a crew": Comoonly picks the people you have most in common with (events.going.ts).
+              <article className="notice match">
+                <strong>✨ Find me a crew</strong>
+                {match.data?.waiting ? (
+                  <>
+                    <p role="status">
+                      Matching you with people who like what you like… {match.data.total}{' '}
+                      {match.data.total === 1 ? 'person is' : 'people are'} waiting. We’ll tell you the moment your crew
+                      is ready.
+                    </p>
+                    <button className="text-button" onClick={() => send('/events/' + e.id + '/match', 'DELETE')}>
+                      Stop matching
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p>Don’t know anyone going? We’ll match you with people who share your interests.</p>
+                    {me!.gender === 'woman' && (
+                      <label className="check-row">
+                        <input type="checkbox" checked={onlyWomen} onChange={(x) => setOnlyWomen(x.target.checked)} />{' '}
+                        Only with women
+                      </label>
+                    )}
+                    <button
+                      className="button lime"
+                      onClick={() => send('/events/' + e.id + '/match', 'POST', { womenOnly: onlyWomen })}
+                    >
+                      ✨ Find me a crew
+                    </button>
+                  </>
+                )}
+              </article>
             )}
             {crews.data?.map((c) => (
               <article className="notice lilac" key={c.id}>

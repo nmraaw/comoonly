@@ -7,7 +7,7 @@ import { shrink } from '../images'
 import { INTERESTS } from '../interests'
 export default function Create() {
   const { me, create, refresh } = useApp()
-  const [category, setCategory] = useState(me!.interests.find((i) => INTERESTS.includes(i)) ?? 'Creative')
+  const [category, setCategory] = useState(me!.interests[0] ?? 'Creative')
   const [mode, setMode] = useState('In person')
   const [created, setCreated] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -84,7 +84,24 @@ export default function Create() {
           />
         </label>
         <h2 className="section-title">Pick an interest</h2>
-        <Chips label="Community interest" values={INTERESTS} value={category} onChange={setCategory} />
+        <Chips
+          label="Community interest"
+          values={[...INTERESTS, 'Other']}
+          value={INTERESTS.includes(category) ? category : 'Other'}
+          onChange={(v) => setCategory(v === 'Other' ? '' : v)}
+        />
+        {!INTERESTS.includes(category) && (
+          <label>
+            Your interest
+            <input
+              required
+              maxLength={30}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Chess, cricket, poetry…"
+            />
+          </label>
+        )}
         <h2 className="section-title">How will you meet?</h2>
         <Chips label="Meeting mode" values={['In person', 'Online', 'Hybrid']} value={mode} onChange={setMode} />
         {mode !== 'Online' && (

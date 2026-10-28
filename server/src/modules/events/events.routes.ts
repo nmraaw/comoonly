@@ -1,8 +1,26 @@
 import { Router } from 'express'
 import { requireAdmin, requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
-import { crewSchema, eventPatchSchema, eventSchema, goSchema, posterSchema, suggestSchema } from './events.schema.ts'
-import { createCrew, goTo, intentOf, intentsOf, listCrews, notGoing } from './events.going.ts'
+import {
+  crewSchema,
+  eventPatchSchema,
+  eventSchema,
+  goSchema,
+  matchSchema,
+  posterSchema,
+  suggestSchema,
+} from './events.schema.ts'
+import {
+  createCrew,
+  findMeACrew,
+  goTo,
+  intentOf,
+  intentsOf,
+  listCrews,
+  matchStatus,
+  notGoing,
+  stopMatching,
+} from './events.going.ts'
 import {
   deleteEvent,
   eventForGroup,
@@ -44,6 +62,20 @@ eventRoutes.get('/:id/crews', requireAuth, (req: any, res) => {
 
 eventRoutes.post('/:id/crews', requireAuth, (req: any, res) => {
   res.status(201).json({ id: createCrew(req.params.id, req.user.id, crewSchema.parse(req.body)) })
+})
+
+// "Find me a crew": joins the best open crew (a request), forms a new one, or waits for more people.
+eventRoutes.post('/:id/match', requireAuth, (req: any, res) => {
+  res.json(findMeACrew(req.params.id, req.user.id, matchSchema.parse(req.body).womenOnly))
+})
+
+eventRoutes.get('/:id/match', requireAuth, (req: any, res) => {
+  res.json(matchStatus(req.params.id, req.user.id))
+})
+
+eventRoutes.delete('/:id/match', requireAuth, (req: any, res) => {
+  stopMatching(req.params.id, req.user.id)
+  res.status(204).end()
 })
 
 // The event an event group is for (its "Event" tab).

@@ -1,30 +1,13 @@
 import { z } from 'zod'
 
-// A community's interest: the same choices people pick on their profile (src/interests.ts), so they can be matched.
-export const categories = [
-  'Music',
-  'Creative',
-  'Tech',
-  'Film',
-  'Reading',
-  'Games',
-  'Drawing',
-  'Coffee',
-  'Walking',
-  'Design',
-  'Sports',
-  'Food',
-  'Hackathons',
-  'Workshops',
-  'Competitions',
-  'Meetups',
-] as const
+// A community's interest: one of the choices on profiles (src/interests.ts) or the organizer's own, like "Chess".
+const interest = z.string().trim().min(1, 'Pick an interest').max(30, 'Keep the interest short')
 export const modes = ['In person', 'Online', 'Hybrid'] as const
 
 // Query-string values always arrive as text, hence z.coerce for the numbers.
 export const listQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
-  category: z.enum(categories).optional(),
+  category: interest.optional(),
   mode: z.enum(modes).optional(),
   location: z.string().trim().max(80).optional(),
   sort: z.enum(['newest', 'spots', 'popular']).default('newest'),
@@ -36,7 +19,7 @@ export const createGroupSchema = z
   .object({
     name: z.string().trim().min(1).max(70),
     description: z.string().trim().min(1).max(400),
-    category: z.enum(categories),
+    category: interest,
     mode: z.enum(modes),
     location: z.string().trim().max(80).default(''),
     spots: z.coerce.number().int().min(1).max(30), // "How many people are you looking for?"
@@ -52,7 +35,7 @@ export const pinnedSchema = z.object({ pinned: z.string().trim().max(200) })
 // "Same crew next time?": the organizer turns a crew into a lasting community.
 export const keepCrewSchema = z.object({
   name: z.string().trim().min(1).max(70),
-  category: z.enum(categories),
+  category: interest,
 })
 
 export type ListQuery = z.infer<typeof listQuerySchema>

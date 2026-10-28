@@ -1360,3 +1360,23 @@ main:has(> .chat) > .chat {
 .pinned .text-button {
   margin-left: 6px;
 }
+/* "Something else?": add your own interest next to the chips. */
+.add-interest {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.add-interest input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.add-interest .button {
+  width: auto;
+  margin: 0;
+  padding: 0 18px;
+}
+/* "Find me a crew" stands out from the crews list. */
+.notice.match {
+  background: linear-gradient(135deg, var(--lime), var(--lilac));
+}

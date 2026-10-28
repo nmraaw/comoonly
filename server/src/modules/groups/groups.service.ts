@@ -158,13 +158,17 @@ export function createGroup(ownerId: string, input: CreateGroupInput) {
   return getGroup(id)!
 }
 
+const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+
 // Tell people about a new community that matches one of their interests, in their city (or online).
 // shortcut: checks every user in memory, fine for thousands of people, move matching into SQL beyond that.
 export function announceGroup(group: ReturnType<typeof toPreview>) {
   const users = db.prepare(`SELECT u.id, u.city, ${INTERESTS} FROM users u WHERE u.id != ?`).all(group.ownerId) as any[]
   const nearby = (city: string) =>
     group.mode === 'Online' || !city || city.toLowerCase() === group.location.toLowerCase()
-  const ids = users.filter((u) => nearby(u.city) && JSON.parse(u.interests).includes(group.category)).map((u) => u.id)
+  const ids = users
+    .filter((u) => nearby(u.city) && JSON.parse(u.interests).some((i: string) => same(i, group.category)))
+    .map((u) => u.id)
   const where = group.mode === 'Online' ? 'online' : `in ${group.location}`
   if (ids.length)
     notify(ids, 'update', `A new ${group.category} community started ${where}: ${group.name}`, `/posts/${group.id}`)

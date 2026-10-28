@@ -1,6 +1,6 @@
 import type { EventItem, Group, Me } from './types'
 
-// What people pick on their profile, and what a community is about (same list on the server: groups.schema.ts).
+// The interests offered on profiles and communities. People can also add their own ("Other").
 export const INTERESTS = [
   'Music',
   'Creative',
@@ -20,7 +20,7 @@ export const INTERESTS = [
   'Meetups',
 ]
 
-const sameCity = (a: string, b: string) => Boolean(a) && a.toLowerCase() === b.toLowerCase()
+const same = (a: string, b: string) => Boolean(a) && a.toLowerCase() === b.toLowerCase()
 
 // "Hackathons" matches a Hackathon; "Music" matches an event that mentions music (like the server's notices).
 export function aboutInterest(interest: string, e: EventItem) {
@@ -35,8 +35,8 @@ export const eventInterest = (me: Me, e: EventItem) => me.interests.find((intere
 export function whyForYou(me: Me, item: { group: Group } | { event: EventItem }) {
   const [interest, near] =
     'group' in item
-      ? [me.interests.includes(item.group.category) && item.group.category, sameCity(me.city, item.group.location)]
-      : [eventInterest(me, item.event), sameCity(me.city, item.event.city)]
+      ? [me.interests.find((i) => same(i, item.group.category)), same(me.city, item.group.location)]
+      : [eventInterest(me, item.event), same(me.city, item.event.city)]
   if (!interest) return ''
   return `You like ${interest}` + (near ? ` · ${me.city}` : '')
 }
@@ -44,5 +44,5 @@ export function whyForYou(me: Me, item: { group: Group } | { event: EventItem })
 // For sorting "For you": an interest counts most, being in your city next.
 export function fit(me: Me, item: { group: Group } | { event: EventItem }) {
   const city = 'group' in item ? item.group.location : item.event.city
-  return (whyForYou(me, item) ? 2 : 0) + (sameCity(me.city, city) ? 1 : 0)
+  return (whyForYou(me, item) ? 2 : 0) + (same(me.city, city) ? 1 : 0)
 }
