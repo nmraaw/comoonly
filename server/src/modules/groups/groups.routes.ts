@@ -25,6 +25,7 @@ import {
   announceGroup,
   createGroup,
   deleteExpense,
+  deleteGroup,
   expenses,
   getGroup,
   keepCrew,
@@ -141,5 +142,10 @@ groupRoutes.post('/:id/adoptions/:userId', requireAuth, (req: any, res) => {
 
 groupRoutes.put('/:id/project', requireAuth, (req: any, res) => {
   setProjectStatus(req.params.id, req.user.id, projectStatusSchema.parse(req.body).status)
+  res.status(204).end()
+})
+
+groupRoutes.delete('/:id', requireAuth, (req: any, res) => {
+  deleteGroup(req.params.id, req.user)
   res.status(204).end()
 })

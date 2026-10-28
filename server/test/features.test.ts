@@ -534,3 +534,27 @@ test('a community can have several interests, and is found by each', async () =>
     assert.ok((await get('/groups?category=' + interest, hira)).some((g: { id: string }) => g.id === id))
   assert.ok(!(await get('/groups?category=Musi', hira)).some((g: { id: string }) => g.id === id))
 })
+
+test('a community can be deleted by its organizer or an admin, and members are told', async () => {
+  const [hira, noor, sara] = [await loginAs('hira'), await loginAs('noor'), await loginAs('sara')]
+  const make = async (name: string) =>
+    (
+      await (
+        await fetch(
+          `${base}/groups`,
+          json({ name, description: 'Oops, posted twice', category: 'Tech', mode: 'Online', spots: 5 }, hira),
+        )
+      ).json()
+    ).id
+  const [first, second] = [await make('Dup one'), await make('Dup two')]
+  await fetch(`${base}/groups/${first}/requests`, json({ intro: 'hi' }, noor))
+  assert.equal(await status(`/groups/${first}/requests/noor`, json({ decision: 'accept' }, hira)), 200)
+
+  const del = (id: string, cookie: string) => status(`/groups/${id}`, { method: 'DELETE', headers: { cookie } })
+  assert.equal(await del(first, noor), 403) // a member can't
+  assert.equal(await del(first, hira), 204)
+  assert.equal(await del(first, hira), 404)
+  assert.match((await get('/notifications', noor))[0].text, /Dup one was closed and deleted/)
+  assert.equal(await del(second, sara), 204) // an admin can
+  assert.ok(!(await get('/admin/overview', sara)).groups.some((g: { id: string }) => g.id === second))
+})

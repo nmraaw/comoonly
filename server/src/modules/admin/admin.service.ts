@@ -34,6 +34,16 @@ export function overview() {
          FROM events e ORDER BY e.created_at DESC LIMIT 500`,
       )
       .all(),
+    // Communities and unfinished ideas (not event chats or crews), to clean up spam or duplicates.
+    groups: db
+      .prepare(
+        `SELECT g.id, g.name, g.kind, g.created_at AS createdAt, u.name AS owner,
+           (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id AND m.status = 'joined') AS members
+         FROM groups g JOIN users u ON u.id = g.owner_id
+         WHERE g.event_id IS NULL AND NOT EXISTS (SELECT 1 FROM events e WHERE e.group_id = g.id)
+         ORDER BY g.created_at DESC LIMIT 500`,
+      )
+      .all(),
     reports: db
       .prepare(
         `SELECT r.id, r.reason, r.details, r.status, r.created_at AS createdAt,

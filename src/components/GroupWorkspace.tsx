@@ -355,6 +355,31 @@ export default function GroupWorkspace({ id }: { id: string }) {
               Leave {group.forEvent ? 'chat' : group.project ? 'project' : 'community'}
             </button>
           )}
+          {host && !group.forEvent && (
+            <article className="notice pink danger-zone">
+              <strong>Delete this {group.project ? 'idea' : 'community'}</strong>
+              <p>
+                ⚠️ This can’t be undone. The chat, members, photos and everything in it are deleted for everyone, and
+                members are told it closed.
+              </p>
+              <button
+                className="button"
+                onClick={() =>
+                  confirm(
+                    `Delete ${group.name} for everyone?\n\nThis is permanent: the chat, members and photos can’t be brought back.`,
+                  ) &&
+                  api('/groups/' + id, { method: 'DELETE' })
+                    .then(() => refresh())
+                    .then(
+                      () => navigate('/groups'),
+                      (err) => alert(err.message),
+                    )
+                }
+              >
+                Delete for everyone
+              </button>
+            </article>
+          )}
         </>
       )}
     </>

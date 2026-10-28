@@ -379,3 +379,19 @@ export function setProjectStatus(groupId: string, ownerId: string, status: 'rest
   }[status]
   addHistory(groupId, emoji, text)
 }
+
+// Delete a community or unfinished idea for good: its chat, members and photos go with it (ON DELETE CASCADE).
+// Its organizer or an admin only. Event chats and crews close with their event instead.
+export function deleteGroup(groupId: string, user: { id: string; isAdmin?: boolean }) {
+  const group = getGroup(groupId)
+  if (!group) throw new HttpError(404, 'Group not found')
+  if (group.forEvent) throw new HttpError(400, 'Event chats and crews close by themselves after the event')
+  if (group.ownerId !== user.id && !user.isAdmin) throw new HttpError(403, 'Only its organizer can delete this')
+  const members = (
+    db
+      .prepare("SELECT user_id AS id FROM group_members WHERE group_id = ? AND status = 'joined' AND user_id != ?")
+      .all(groupId, user.id) as { id: string }[]
+  ).map((m) => m.id)
+  db.prepare('DELETE FROM groups WHERE id = ?').run(groupId)
+  if (members.length) notify(members, 'update', `${group.name} was closed and deleted`, '/groups')
+}

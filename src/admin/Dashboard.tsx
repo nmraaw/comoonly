@@ -22,6 +22,7 @@ type Overview = {
     registerUrl: string
     going: number
   }[]
+  groups: { id: string; name: string; kind: string; createdAt: number; owner: string; members: number }[]
   reports: {
     id: string
     reason: string
@@ -55,6 +56,21 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
     if (!confirm(`Delete “${e.title}” for everyone?${going} This can’t be undone.`)) return
     try {
       await api('/events/' + e.id, { method: 'DELETE' })
+    } catch (err) {
+      alert((err as Error).message)
+    }
+    reload()
+  }
+  // Spam or duplicate communities and ideas: their chat, members and photos go too.
+  async function deleteGroup(g: Overview['groups'][number]) {
+    if (
+      !confirm(
+        `Delete “${g.name}” by ${g.owner} for everyone?\n\nThis is permanent: its chat, ${g.members} ${g.members === 1 ? 'member' : 'members'} and photos can’t be brought back.`,
+      )
+    )
+      return
+    try {
+      await api('/groups/' + g.id, { method: 'DELETE' })
     } catch (err) {
       alert((err as Error).message)
     }
@@ -108,7 +124,12 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
           Download a backup
         </a>
       )}
-      <Chips label="Dashboard section" values={['People', 'Events', 'Reports']} value={tab} onChange={setTab} />
+      <Chips
+        label="Dashboard section"
+        values={['People', 'Events', 'Communities', 'Reports']}
+        value={tab}
+        onChange={setTab}
+      />
       {tab !== 'Reports' && (
         <label className="search">
           <input
@@ -155,6 +176,27 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
                   </span>
                 </a>
                 <button className="text-button" onClick={() => deleteEvent(e)}>
+                  Delete
+                </button>
+              </div>
+            ))}
+        {tab === 'Communities' &&
+          data?.groups
+            .filter((g) => (g.name + ' ' + g.owner).toLowerCase().includes(q))
+            .map((g) => (
+              <div className="member-row" key={g.id}>
+                <a href={'/posts/' + g.id} target="_blank" rel="noreferrer">
+                  <span>
+                    <strong>
+                      {g.kind === 'project' ? '🪦 ' : '🟢 '}
+                      {g.name}
+                    </strong>
+                    <small>
+                      by {g.owner} · {day(g.createdAt)} · {g.members} {g.members === 1 ? 'member' : 'members'}
+                    </small>
+                  </span>
+                </a>
+                <button className="text-button" onClick={() => deleteGroup(g)}>
                   Delete
                 </button>
               </div>
