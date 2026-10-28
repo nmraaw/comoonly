@@ -45,7 +45,7 @@ function fromSchemaOrg(e: any, pageUrl: string): Candidate {
     mode: mixed ? 'Hybrid' : online ? 'Online' : 'In person',
     category: guessCategory(`${e.name} ${description}`),
     description,
-    registerUrl: URL.parse(link, pageUrl)?.href ?? '', // a broken link fails validation, dropping only this event
+    registerUrl: URL.parse(link, pageUrl)?.href ?? 'broken', // fails validation, dropping only this event
   }
 }
 

@@ -120,6 +120,12 @@ test('suggest an event: AI reads the post, result waits for review; closed or pa
       over: 2, // registration closed, and the far-future guess
     })
     assert.match(asked, /Today is \w+day \d{4}-\d{2}-\d{2} in Pakistan/) // weekday + date: "this Friday", "Sat 2 Nov"
+    // A photo of a poster alone (snapped on a wall) is enough; nothing at all isn't.
+    assert.equal(await status('/events/suggest', json({}, hira)), 400)
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    const snapped = await (await fetch(`${base}/events/suggest`, json({ image: png }, hira))).json()
+    assert.equal(snapped.found, 1) // the same mixer again: found, already listed
+    assert.match(asked, /a photo of a poster/)
     const draft = (await get('/events/review', sara)).find((e: { title: string }) => e.title === 'Lahore Startup Mixer')
     assert.equal(draft.registerUrl, post.postUrl) // no link on the poster: the post itself is used
     assert.equal(draft.deadline, soon(25))

@@ -56,7 +56,7 @@ export function saveEvent(
       `INSERT OR IGNORE INTO events (id, title, starts_at, deadline, city, mode, category, description, register_url, source_url,
          status, suggested_by, created_at, price)
        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-       WHERE NOT EXISTS (SELECT 1 FROM events WHERE register_url = ? OR (title = ? AND starts_at = ?))`,
+       WHERE NOT EXISTS (SELECT 1 FROM events WHERE (register_url = ? AND register_url != '') OR (title = ? AND starts_at = ?))`,
     )
     .run(
       id,

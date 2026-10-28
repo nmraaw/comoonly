@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { imageSchema, photoSchema } from '../../photos.ts'
 
 const httpUrl = z.url({ protocol: /^https?$/, message: 'Use a full https:// link' })
+// A poster snapped on a wall often has no link at all: then it's ''.
+const optionalUrl = httpUrl.or(z.literal(''))
 
 // The fields of an event, without defaults (see eventPatchSchema for why).
 const fields = {
@@ -14,12 +16,12 @@ const fields = {
   mode: z.enum(['In person', 'Online', 'Hybrid']),
   category: z.string().trim().min(1).max(40),
   description: z.string().trim().max(1000),
-  registerUrl: httpUrl, // the official registration page
+  registerUrl: optionalUrl, // the official registration page, '' if the poster gives none
   deadline: z // last day to register, if the post says
     .string()
     .trim()
     .refine((d) => !d || !Number.isNaN(Date.parse(d)), 'Add a valid deadline'),
-  sourceUrl: httpUrl, // where we found it
+  sourceUrl: optionalUrl, // where we found it, '' for a photo of a poster
   // The cheapest ticket in rupees: 0 = free, null = not stated. Forms and the AI may send text or "".
   price: z.preprocess(
     (v) => (v === '' || v === undefined || v === null ? null : Math.round(Number(String(v).replace(/[^\d.]/g, '')))),
@@ -46,12 +48,17 @@ export const eventPatchSchema = z
   .extend({ status: z.enum(['draft', 'published', 'rejected']).optional() })
 
 // "Suggest an event": the post's link, plus its caption and/or a screenshot of the poster.
+// Or just a photo of a poster (snapped on a wall), with no link at all.
 export const suggestSchema = z
   .object({
-    postUrl: httpUrl,
+    postUrl: optionalUrl.default(''),
     text: z.string().trim().max(5000).default(''),
     image: imageSchema.optional(),
     account: z.string().trim().max(31).default(''), // Instagram @name, for a link alone (see findPost)
+  })
+  .refine((p) => p.postUrl || p.text || p.image, {
+    message: 'Add a link, a photo of the poster, or the caption',
+    path: ['postUrl'],
   })
   .refine((p) => p.text || p.image || /instagram\.com\//i.test(p.postUrl), {
     message: 'For links outside Instagram, add a screenshot of the post or paste its caption',

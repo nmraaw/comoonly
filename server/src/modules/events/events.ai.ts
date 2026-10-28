@@ -144,10 +144,13 @@ export async function eventsFromPost(
 ) {
   if (!config.ai.baseUrl) throw new HttpError(503, 'Event suggestions aren’t switched on yet. Please try again later.')
   const content = [
-    { type: 'text', text: `Post: ${post.postUrl}\n\n${post.text || '(no caption: read the image)'}` },
+    {
+      type: 'text',
+      text: `Post: ${post.postUrl || '(a photo of a poster)'}\n\n${post.text || '(no caption: read the image)'}`,
+    },
     ...(post.image ? [{ type: 'image_url', image_url: { url: post.image } }] : []),
   ]
-  // A poster often has no link; then the post itself is where people find out more.
+  // A poster often has no link; then the post itself is where people find out more (none for a snapped poster).
   const candidates = (await askAi(content))
     .filter((c) => !pakistanOnly || inPakistan(c))
     .map((c) => ({ ...c, registerUrl: c.registerUrl || post.postUrl }))

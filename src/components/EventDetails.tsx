@@ -65,9 +65,11 @@ export default function EventDetails({
         </p>
       )}
       {children}
-      <a className="button" href={e.registerUrl} target="_blank" rel="noopener noreferrer">
-        Register on the official page ↗
-      </a>
+      {e.registerUrl && (
+        <a className="button" href={e.registerUrl} target="_blank" rel="noopener noreferrer">
+          Register on the official page ↗
+        </a>
+      )}
       {e.description && (
         <>
           <h2 className="section-title">About</h2>

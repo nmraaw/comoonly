@@ -23,9 +23,11 @@ export function SuggestForm() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  // "📸 Snap a poster": a photo straight from the camera (phones), shown before sending.
+  const [snap, setSnap] = useState<{ file: File; url: string }>()
   async function submit(form: HTMLFormElement) {
     const data = new FormData(form)
-    const file = data.get('image') as File
+    const file = snap?.file ?? (data.get('image') as File)
     setBusy(true)
     setNote('')
     try {
@@ -36,6 +38,7 @@ export function SuggestForm() {
       })
       if (r.added) {
         setDone(true)
+        setSnap(undefined)
         form.reset()
       } else
         setNote(
@@ -65,8 +68,32 @@ export function SuggestForm() {
     )
   return (
     <>
+      <label className="snap">
+        <span aria-hidden="true">📸</span>
+        <strong>Snap a poster</strong>
+        <small>Saw one on a wall? Take a photo and the AI reads it.</small>
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) setSnap({ file, url: URL.createObjectURL(file) })
+          }}
+        />
+      </label>
+      {snap && (
+        <div className="snapped">
+          <img src={snap.url} alt="Your photo of the poster" />
+          <button type="button" className="text-button" onClick={() => setSnap(undefined)}>
+            Remove photo
+          </button>
+        </div>
+      )}
       <p>
-        Share an event from Instagram, TikTok or anywhere else. For Instagram, the link and the account’s @name are
+        Or share an event from Instagram, TikTok or anywhere else. For Instagram, the link and the account’s @name are
         enough. For other sites, add a screenshot of the post or paste its caption.
       </p>
       <form
@@ -76,8 +103,8 @@ export function SuggestForm() {
         }}
       >
         <label>
-          Link to the post
-          <input name="postUrl" type="url" required placeholder="https://www.instagram.com/p/…" />
+          Link to the post {snap && '(optional with a photo)'}
+          <input name="postUrl" type="url" required={!snap} placeholder="https://www.instagram.com/p/…" />
         </label>
         <label>
           Instagram account (if the link doesn’t show it)
@@ -98,7 +125,7 @@ export function SuggestForm() {
           </p>
         )}
         <button className="button primary" disabled={busy}>
-          {busy ? 'Reading the post…' : 'Send suggestion →'}
+          {busy ? 'Reading it…' : 'Send suggestion →'}
         </button>
       </form>
     </>

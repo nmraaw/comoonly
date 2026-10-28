@@ -44,8 +44,8 @@ function Fields({ e }: { e?: Partial<EventItem> }) {
         <textarea name="description" maxLength={1000} defaultValue={e?.description} />
       </label>
       <label>
-        Official registration link
-        <input name="registerUrl" type="url" required defaultValue={e?.registerUrl} />
+        Official registration link (empty if there's none)
+        <input name="registerUrl" type="url" defaultValue={e?.registerUrl} />
       </label>
       <label>
         Cheapest ticket in rupees (0 = free, empty = not stated)
@@ -153,9 +153,13 @@ export default function ReviewEvents() {
           }}
         >
           <small>
-            <a className="text-button" href={e.sourceUrl} target="_blank" rel="noopener noreferrer">
-              {e.suggestedBy ? `Suggested by ${e.suggestedBy}` : 'Found'} on {new URL(e.sourceUrl).hostname} ↗
-            </a>
+            {e.sourceUrl ? (
+              <a className="text-button" href={e.sourceUrl} target="_blank" rel="noopener noreferrer">
+                {e.suggestedBy ? `Suggested by ${e.suggestedBy}` : 'Found'} on {new URL(e.sourceUrl).hostname} ↗
+              </a>
+            ) : (
+              <small>📸 {e.suggestedBy ? `Snapped by ${e.suggestedBy}` : 'From a photo'}: check the poster below</small>
+            )}
           </small>
           <Fields e={e} />
           <div className="two-actions">

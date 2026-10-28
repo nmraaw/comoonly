@@ -145,7 +145,7 @@ export default function Dashboard({ me, onReview }: { me: Me; onReview: () => vo
             .filter((e) => (e.title + ' ' + e.city + ' ' + e.status).toLowerCase().includes(q))
             .map((e) => (
               <div className="member-row" key={e.id}>
-                <a href={e.registerUrl} target="_blank" rel="noopener noreferrer">
+                <a href={e.registerUrl || undefined} target="_blank" rel="noopener noreferrer">
                   <span>
                     <strong>{e.title}</strong>
                     <small>

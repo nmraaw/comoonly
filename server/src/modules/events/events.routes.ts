@@ -103,7 +103,8 @@ eventRoutes.get('/:id/calendar.ics', requireAuth, (req, res) => {
   const e = getEvent(req.params.id as string)
   if (e.status !== 'published') throw new HttpError(404, 'Event not found')
   const place = e.mode === 'Online' ? 'Online' : e.city
-  sendIcs(res, { ...e, place, details: `${e.description}\n\nRegister: ${e.registerUrl}`.trim() })
+  const register = e.registerUrl ? `\n\nRegister: ${e.registerUrl}` : ''
+  sendIcs(res, { ...e, place, details: `${e.description}${register}`.trim() })
 })
 
 // "Suggest an event": anyone shares a post (Instagram, TikTok, a poster). The AI reads it; an admin approves.

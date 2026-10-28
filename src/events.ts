@@ -18,7 +18,7 @@ export const eventCalendar = (e: EventItem): CalendarProps => ({
   title: e.title,
   date: e.date,
   place: e.mode === 'Online' ? 'Online' : e.city,
-  details: `${e.description}\n\nRegister: ${e.registerUrl}`.trim(),
+  details: `${e.description}${e.registerUrl ? `\n\nRegister: ${e.registerUrl}` : ''}`.trim(),
   ics: `/events/${e.id}/calendar.ics`,
 })
 
