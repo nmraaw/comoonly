@@ -30,3 +30,7 @@ export function eventCountdown(e: EventItem) {
   if (days === 1) return 'Tomorrow'
   return days < 60 ? `In ${days} days` : ''
 }
+
+// "Free", "Rs 2,200", or "" when the post doesn't say.
+export const eventPrice = (e: EventItem) =>
+  e.price === null ? '' : e.price ? `Rs ${e.price.toLocaleString('en-US')}` : 'Free'

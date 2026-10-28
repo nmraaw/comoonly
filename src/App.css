@@ -1413,3 +1413,27 @@ main:has(> .chat) > .chat {
   object-fit: contain;
   border-radius: 18px;
 }
+/* Split costs: the add form on one line, then one row per expense. */
+.expense-form {
+  display: grid;
+  grid-template-columns: 1fr 90px auto;
+  gap: 8px;
+}
+.expense-form input {
+  margin: 0;
+  min-width: 0;
+}
+.expense-form .button {
+  width: auto;
+  margin: 0;
+  padding: 0 16px;
+}
+.expense {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.expense span {
+  flex: 1;
+}

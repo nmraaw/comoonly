@@ -65,6 +65,7 @@ export type EventItem = {
   title: string
   date: string
   deadline: string
+  price: number | null // cheapest ticket in rupees: 0 = free, null = not stated
   suggestedBy: string | null
   city: string
   mode: string

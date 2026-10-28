@@ -48,6 +48,10 @@ function Fields({ e }: { e?: Partial<EventItem> }) {
         <input name="registerUrl" type="url" required defaultValue={e?.registerUrl} />
       </label>
       <label>
+        Cheapest ticket in rupees (0 = free, empty = not stated)
+        <input name="price" type="number" min="0" max="1000000" defaultValue={e?.price ?? ''} />
+      </label>
+      <label>
         Registration closes (optional)
         <input name="deadline" type="date" defaultValue={e?.deadline} />
       </label>

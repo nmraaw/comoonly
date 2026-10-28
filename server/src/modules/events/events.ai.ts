@@ -21,6 +21,7 @@ competitions) from a web page or a social media post. Reply with ONLY a JSON arr
  "mode": "In person" | "Online" | "Hybrid", "category": "Hackathon" | "Workshop" | "Competition" | "Meetup" | "Event",
  "description": a short summary under 300 characters using only facts in the post, "registerUrl": the official registration link as a full URL or "",
  "deadline": last day to register as YYYY-MM-DD, or "" if not stated,
+ "price": the cheapest ticket in Pakistani rupees as a number, 0 if free, or null if not stated,
  "country": the country it takes place in (for online events, the organizer's country), or "" if unclear}
 A date without a year means its next occurrence after today. Include events that are already over too (the app checks
 the dates itself). Only include events that are really there.

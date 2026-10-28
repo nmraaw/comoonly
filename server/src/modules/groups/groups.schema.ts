@@ -38,5 +38,14 @@ export const keepCrewSchema = z.object({
   category: interest,
 })
 
+// Getting there together: the area a member is coming from (never an exact address).
+export const areaSchema = z.object({ area: z.string().trim().max(60) })
+
+// A shared cost, split equally between the members.
+export const expenseSchema = z.object({
+  what: z.string().trim().min(1, 'Say what it was for').max(60),
+  amount: z.coerce.number().int('Whole rupees only').min(1, 'Add an amount').max(1_000_000),
+})
+
 export type ListQuery = z.infer<typeof listQuerySchema>
 export type CreateGroupInput = z.infer<typeof createGroupSchema>

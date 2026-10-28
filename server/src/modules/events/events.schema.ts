@@ -20,6 +20,11 @@ const fields = {
     .trim()
     .refine((d) => !d || !Number.isNaN(Date.parse(d)), 'Add a valid deadline'),
   sourceUrl: httpUrl, // where we found it
+  // The cheapest ticket in rupees: 0 = free, null = not stated. Forms and the AI may send text or "".
+  price: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? null : Math.round(Number(String(v).replace(/[^\d.]/g, '')))),
+    z.number().int().min(0).max(1_000_000).nullable(),
+  ),
 }
 
 // One event, whether found by the finder or typed in by an admin. Anything that doesn't fit is thrown away.
@@ -30,6 +35,7 @@ export const eventSchema = z.object({
   category: fields.category.default('Event'),
   description: fields.description.default(''),
   deadline: fields.deadline.default(''),
+  price: fields.price.default(null),
 })
 
 // Admin edits: change any field, then publish or reject. Built from `fields`, not eventSchema, on purpose:

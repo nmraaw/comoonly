@@ -84,6 +84,7 @@ test('event finder reads JSON-LD and drops past or malformed events', () => {
       deadline: '',
       registerUrl: 'https://events.test/e/1',
       sourceUrl: 'https://events.test/list',
+      price: null,
     },
   ])
 })
@@ -349,4 +350,40 @@ test('chat photos are for the people in the chat; who’s going unlocks once you
   await fetch(`${base}/events/${id}/go`, json({ intent: 'meet' }, zain))
   const going = await get(`/events/${id}/going`, zain)
   assert.deepEqual([going.locked, going.people.map((p: { id: string }) => p.id)], [false, ['hamza']])
+})
+
+test('prices on events; a crew’s areas and shared costs, split so everyone is even', async () => {
+  const [sara, hira, me, zain] = await Promise.all(['sara', 'hira', 'me', 'zain'].map((u) => loginAs(u)))
+  const event = {
+    title: 'Pottery evening',
+    date: '2031-06-01T18:00',
+    city: 'Sialkot',
+    category: 'Workshop',
+    registerUrl: 'https://pots.test/1',
+    sourceUrl: 'https://pots.test',
+    price: 'Rs 2,200', // as a poster or the AI might write it
+  }
+  await fetch(`${base}/events`, json(event, sara))
+  const listed = (await get('/events', hira)).find((e: { title: string }) => e.title === event.title)
+  assert.equal(listed.price, 2200)
+  assert.equal(await status(`/events/${listed.id}`, json({ price: '' }, sara, 'PATCH')), 200) // cleared: not stated
+  assert.equal((await get(`/events/${listed.id}`, hira)).price, null)
+
+  const tiny = 'tiny-game' // stands in for a crew (same members-only rules); Hira hosts, 'me' and Sara are in it
+  assert.equal(await status(`/groups/${tiny}/area`, json({ area: 'Gulshan' }, zain, 'PUT')), 403) // not a member
+  assert.equal(await status(`/groups/${tiny}/area`, json({ area: 'Gulshan' }, hira, 'PUT')), 204)
+  const members = await get(`/groups/${tiny}/members`, hira)
+  assert.equal(members.find((m: { id: string }) => m.id === 'hira').area, 'Gulshan')
+
+  assert.equal(await status(`/groups/${tiny}/expenses`, json({ what: 'Tickets', amount: 0 }, hira)), 400)
+  await fetch(`${base}/groups/${tiny}/expenses`, json({ what: 'Tickets', amount: 900 }, hira))
+  const costs = await get(`/groups/${tiny}/expenses`, hira)
+  const n = members.length
+  assert.equal(costs.total, 900)
+  assert.equal(costs.settle.length, n - 1) // everyone else pays Hira their share
+  assert.ok(costs.settle.every((s: { to: string; amount: number }) => s.to === 'Hira S.' && s.amount === 900 / n))
+  const [expense] = costs.expenses
+  assert.equal(await status(`/groups/${tiny}/expenses/${expense.id}`, json({}, me, 'DELETE')), 404) // not the payer
+  assert.equal(await status(`/groups/${tiny}/expenses/${expense.id}`, json({}, hira, 'DELETE')), 204)
+  assert.deepEqual((await get(`/groups/${tiny}/expenses`, sara)).settle, [])
 })

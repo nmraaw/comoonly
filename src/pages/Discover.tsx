@@ -15,6 +15,7 @@ export default function Discover() {
   const [place, setPlace] = useState('Anywhere')
   const [sort, setSort] = useState<'For you' | 'Soonest'>('For you')
   const [category, setCategory] = useState('All')
+  const [budget, setBudget] = useState('Any price')
   const [savedOnly, setSavedOnly] = useState(false)
   const [filters, setFilters] = useState(false)
   // Published events, checked every minute, so one an admin just published shows up without a reload.
@@ -28,6 +29,10 @@ export default function Discover() {
       ),
     ),
   ]
+  // Events with no price on the post only show for "Any price". Communities are free to join.
+  const withinBudget = (e: EventItem) =>
+    budget === 'Any price' ||
+    (e.price !== null && (budget === 'Free' ? e.price === 0 : e.price <= Number(budget.replace(/\D/g, ''))))
   const at = (city: string, online: boolean) =>
     place === 'Anywhere' || (place === 'Online' ? online : city.toLowerCase() === place.toLowerCase())
   const found = (text: string) => text.toLowerCase().includes(search.toLowerCase())
@@ -43,6 +48,7 @@ export default function Discover() {
       !savedOnly &&
       at(e.city, e.mode !== 'In person') &&
       (category === 'All' || aboutInterest(category, e)) &&
+      withinBudget(e) &&
       found(e.title + ' ' + e.description + ' ' + e.category),
   )
   // One feed: events (soonest first, as the server sends them), then communities (newest first).
@@ -51,11 +57,14 @@ export default function Discover() {
   if (sort === 'For you') items.sort((a, b) => fit(me!, b) - fit(me!, a))
   const feed = useFeedWheel()
   // The interest and saved filters live behind the filter button; a short line says which ones are on.
-  const active = [category !== 'All' && category, savedOnly && 'Saved'].filter(Boolean)
+  const active = [category !== 'All' && category, budget !== 'Any price' && budget, savedOnly && 'Saved'].filter(
+    Boolean,
+  )
   const clear = () => {
     setSearch('')
     setPlace('Anywhere')
     setCategory('All')
+    setBudget('Any price')
     setSavedOnly(false)
   }
   // The top stays small (logo row, one heading line with the mascot, search) so the feed gets the screen.
@@ -147,7 +156,15 @@ export default function Discover() {
       </div>
       {filters && (
         <Modal title="Find your people" onClose={() => setFilters(false)}>
+          <h2 className="section-title">Interests</h2>
           <Chips label="Interests" values={['All', ...INTERESTS]} value={category} onChange={setCategory} />
+          <h2 className="section-title">Budget</h2>
+          <Chips
+            label="Budget"
+            values={['Any price', 'Free', 'Under Rs 1,000', 'Under Rs 3,000']}
+            value={budget}
+            onChange={setBudget}
+          />
           <label className="check-row">
             <input type="checkbox" checked={savedOnly} onChange={(e) => setSavedOnly(e.target.checked)} /> Saved
             communities only

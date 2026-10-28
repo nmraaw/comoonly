@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { EventItem } from '../types'
-import { eventCalendar, eventCountdown, eventPlace, eventWhen } from '../events'
+import { eventCalendar, eventCountdown, eventPlace, eventPrice, eventWhen } from '../events'
 import AddToCalendar from './AddToCalendar'
 import Icon from './Icon'
 
@@ -47,6 +47,11 @@ export default function EventDetails({
           <Icon name="pin" />
           <strong>{eventPlace(e)}</strong>
         </p>
+        {eventPrice(e) && (
+          <p>
+            🎟️ <strong>{e.price ? `From ${eventPrice(e)}` : 'Free'}</strong>
+          </p>
+        )}
         <p>
           <Icon name="Groups" />
           {e.goingCount ? `${e.goingCount} from Comoonly going together` : 'Nobody from Comoonly yet. Be the first!'}

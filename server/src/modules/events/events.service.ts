@@ -6,7 +6,7 @@ import { INTERESTS } from '../auth/auth.service.ts'
 import { notify } from '../notifications/notifications.service.ts'
 import type { EventInput, EventPatch } from './events.schema.ts'
 
-const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description,
+const SELECT = `SELECT e.id, e.title, e.starts_at AS date, e.deadline, e.city, e.mode, e.category, e.description, e.price,
     e.register_url AS registerUrl, e.source_url AS sourceUrl, e.status, e.group_id AS groupId,
     (SELECT name FROM users WHERE id = e.suggested_by) AS suggestedBy,
     (SELECT COUNT(*) FROM event_going g WHERE g.event_id = e.id) AS goingCount,
@@ -54,8 +54,8 @@ export function saveEvent(
   const result = db
     .prepare(
       `INSERT OR IGNORE INTO events (id, title, starts_at, deadline, city, mode, category, description, register_url, source_url,
-         status, suggested_by, created_at)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         status, suggested_by, created_at, price)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM events WHERE register_url = ? OR (title = ? AND starts_at = ?))`,
     )
     .run(
@@ -72,6 +72,7 @@ export function saveEvent(
       status,
       suggestedBy,
       Date.now(),
+      input.price ?? null, // the finder and tests may leave it out
       input.registerUrl,
       input.title,
       input.date,
@@ -167,6 +168,7 @@ const COLUMNS: Record<string, string> = {
   description: 'description',
   registerUrl: 'register_url',
   sourceUrl: 'source_url',
+  price: 'price',
   status: 'status',
 }
 
@@ -176,7 +178,7 @@ export function updateEvent(id: string, patch: EventPatch) {
   if (fields.length) {
     // Column names come from the fixed COLUMNS list above, never from the request.
     const sets = fields.map(([key]) => `${COLUMNS[key]} = ?`).join(', ')
-    db.prepare(`UPDATE events SET ${sets} WHERE id = ?`).run(...fields.map(([, v]) => v as string), id)
+    db.prepare(`UPDATE events SET ${sets} WHERE id = ?`).run(...fields.map(([, v]) => v as string | number | null), id)
   }
   const after = getEvent(id)
   if (after.status === 'published' && before.status !== 'published') announce(after)

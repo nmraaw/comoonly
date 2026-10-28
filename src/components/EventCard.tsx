@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { EventItem } from '../types'
-import { eventPlace, eventWhen } from '../events'
+import { eventPlace, eventPrice, eventWhen } from '../events'
 import { Mascot } from './UI'
 
 // One published event in a list (Discover, the Events page). Everything else is on its own page.
@@ -18,6 +18,7 @@ export default function EventCard({ event: e, why }: { event: EventItem; why?: s
           <span className="kind-label event">📅 Event</span>
           <small>
             <strong>{eventWhen(e)}</strong> · {eventPlace(e)}
+            {eventPrice(e) && ` · ${eventPrice(e)}`}
           </small>
           <Link className="card-title" to={'/events/' + e.id}>
             <h2>{e.title}</h2>

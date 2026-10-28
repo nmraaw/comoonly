@@ -5,6 +5,7 @@ import type { EventItem } from '../types'
 import { Avatar, Chips, Empty, Modal } from './UI'
 import EventCard from './EventCard'
 import MemoryCard from './MemoryCard'
+import CrewPlan from './CrewPlan'
 import { aboutInterest, INTERESTS } from '../interests'
 import EventDetails from './EventDetails'
 import Chat from './Chat'
@@ -16,7 +17,11 @@ export default function GroupWorkspace({ id }: { id: string }) {
   const [params, setParams] = useSearchParams()
   const group = groups.find((g) => g.id === id)
   // An event's group or crew opens on the event itself (poster, details, links); a community on what's coming up.
-  const sections = group?.forEvent ? ['Event', 'Chat', 'Members'] : ['Upcoming', 'Chat', 'Members']
+  const sections = group?.crewFor
+    ? ['Event', 'Chat', 'Plan', 'Members']
+    : group?.forEvent
+      ? ['Event', 'Chat', 'Members']
+      : ['Upcoming', 'Chat', 'Members']
   const tab = sections.includes(params.get('tab') || '') ? params.get('tab')! : sections[0]
   const event = useApi<EventItem>(group?.forEvent ? '/events/for-group/' + id : null)
   const host = group?.ownerId === me!.id
@@ -31,7 +36,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
   const [keeping, setKeeping] = useState(false)
   const [memory, setMemory] = useState(false)
   const [interest, setInterest] = useState('Meetups')
-  const members = useApi<{ id: string; name: string; role: string }[]>('/groups/' + id + '/members')
+  const members = useApi<{ id: string; name: string; role: string; area: string }[]>('/groups/' + id + '/members')
   const requests = useApi<{ id: string; name: string; city: string; intro: string }[]>(
     host ? '/groups/' + id + '/requests' : null,
   )
@@ -144,6 +149,9 @@ export default function GroupWorkspace({ id }: { id: string }) {
         onChange={(v) => setParams({ tab: v }, { replace: true })}
       />
       {tab === 'Chat' && <Chat path={'/groups/' + id + '/messages'} />}
+      {tab === 'Plan' && members.data && (
+        <CrewPlan group={group} city={event.data?.city ?? ''} members={members.data} onArea={members.reload} />
+      )}
       {tab === 'Upcoming' && (
         <>
           <p className="hint">

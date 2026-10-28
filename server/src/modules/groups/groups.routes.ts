@@ -2,15 +2,26 @@ import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.ts'
 import { HttpError } from '../../middleware/errors.ts'
 import { photoSchema, savePhoto, sendPhoto } from '../../photos.ts'
-import { createGroupSchema, keepCrewSchema, listQuerySchema, pinnedSchema } from './groups.schema.ts'
 import {
+  areaSchema,
+  createGroupSchema,
+  expenseSchema,
+  keepCrewSchema,
+  listQuerySchema,
+  pinnedSchema,
+} from './groups.schema.ts'
+import {
+  addExpense,
   announceGroup,
   createGroup,
+  deleteExpense,
+  expenses,
   getGroup,
   keepCrew,
   listGroups,
   listMembers,
   savedGroupIds,
+  setArea,
   setPinned,
   toggleSaved,
 } from './groups.service.ts'
@@ -66,4 +77,24 @@ groupRoutes.put('/:id/pinned', requireAuth, (req: any, res) => {
 
 groupRoutes.post('/:id/keep', requireAuth, (req: any, res) => {
   res.json(keepCrew(req.params.id, req.user.id, keepCrewSchema.parse(req.body)))
+})
+
+groupRoutes.put('/:id/area', requireAuth, (req: any, res) => {
+  setArea(req.params.id, req.user.id, areaSchema.parse(req.body).area)
+  res.status(204).end()
+})
+
+groupRoutes.get('/:id/expenses', requireAuth, (req: any, res) => {
+  res.json(expenses(req.params.id, req.user.id))
+})
+
+groupRoutes.post('/:id/expenses', requireAuth, (req: any, res) => {
+  const { what, amount } = expenseSchema.parse(req.body)
+  addExpense(req.params.id, req.user.id, what, amount)
+  res.status(201).json(expenses(req.params.id, req.user.id))
+})
+
+groupRoutes.delete('/:id/expenses/:expenseId', requireAuth, (req: any, res) => {
+  deleteExpense(req.params.id, req.user.id, req.params.expenseId)
+  res.status(204).end()
 })

@@ -109,7 +109,7 @@ export function listMembers(groupId: string, viewerId: string) {
   const group = requireMember(groupId, viewerId)
   const rows = db
     .prepare(
-      `SELECT u.id, u.name FROM group_members m JOIN users u ON u.id = m.user_id
+      `SELECT u.id, u.name, m.area FROM group_members m JOIN users u ON u.id = m.user_id
        WHERE m.group_id = ? AND m.status = 'joined' ORDER BY m.rowid`,
     )
     .all(groupId)
@@ -194,4 +194,59 @@ export function keepCrew(groupId: string, userId: string, input: { name: string;
     .map((r: any) => r.user_id)
   notify(others, 'update', `Same crew next time! ${input.name} is now a community`, `/groups/${groupId}`)
   return getGroup(groupId)!
+}
+
+export function setArea(groupId: string, userId: string, area: string) {
+  requireMember(groupId, userId)
+  db.prepare('UPDATE group_members SET area = ? WHERE group_id = ? AND user_id = ?').run(area, groupId, userId)
+}
+
+// Shared costs, like Splitwise: every expense is split equally between the members, and `settle` says
+// who pays whom so everyone is even, in as few payments as it takes.
+export function expenses(groupId: string, userId: string) {
+  requireMember(groupId, userId)
+  const list = db
+    .prepare(
+      `SELECT e.id, e.what, e.amount, e.payer_id AS payerId, u.name AS payer FROM expenses e
+       JOIN users u ON u.id = e.payer_id WHERE e.group_id = ? ORDER BY e.created_at`,
+    )
+    .all(groupId) as { id: string; what: string; amount: number; payerId: string; payer: string }[]
+  const members = listMembers(groupId, userId)
+  const total = list.reduce((sum, e) => sum + e.amount, 0)
+  const balance = new Map(members.map((m: any) => [m.id, -total / members.length]))
+  for (const e of list) balance.set(e.payerId, (balance.get(e.payerId) ?? 0) + e.amount)
+  const name = (id: string) => members.find((m: any) => m.id === id)?.name ?? 'Someone who left'
+  const owes = [...balance].filter(([, b]) => b < -0.5).map(([id, b]) => ({ id, left: -b }))
+  const gets = [...balance].filter(([, b]) => b > 0.5).map(([id, b]) => ({ id, left: b }))
+  const settle = []
+  for (const debtor of owes)
+    for (const creditor of gets) {
+      const amount = Math.min(debtor.left, creditor.left)
+      if (Math.round(amount) < 1) continue
+      settle.push({ from: name(debtor.id), to: name(creditor.id), amount: Math.round(amount) })
+      debtor.left -= amount
+      creditor.left -= amount
+    }
+  return { expenses: list, total, settle }
+}
+
+export function addExpense(groupId: string, userId: string, what: string, amount: number) {
+  requireMember(groupId, userId)
+  db.prepare('INSERT INTO expenses (id, group_id, payer_id, what, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    randomUUID(),
+    groupId,
+    userId,
+    what,
+    amount,
+    Date.now(),
+  )
+}
+
+// Only whoever paid can take an expense back off the list.
+export function deleteExpense(groupId: string, userId: string, expenseId: string) {
+  requireMember(groupId, userId)
+  const removed = db
+    .prepare('DELETE FROM expenses WHERE id = ? AND group_id = ? AND payer_id = ?')
+    .run(expenseId, groupId, userId)
+  if (!removed.changes) throw new HttpError(404, 'Expense not found')
 }
