@@ -29,6 +29,7 @@ import {
   listDrafts,
   savePoster,
   listPublished,
+  places,
   saveEvent,
   updateEvent,
 } from './events.service.ts'
@@ -39,6 +40,11 @@ import { sendIcs } from '../../calendar.ts'
 import { sendPhoto } from '../../photos.ts'
 
 export const eventRoutes = Router()
+
+// The "Where" filter's choices. Before '/:id', so "places" isn't read as an event id.
+eventRoutes.get('/places', requireAuth, (_req, res) => {
+  res.json(places())
+})
 
 // Everyone (logged in): upcoming published events.
 eventRoutes.get('/', requireAuth, (req: any, res) => {

@@ -22,15 +22,15 @@ export default function Discover() {
   const [filters, setFilters] = useState(false)
   // Published events, checked every minute, so one an admin just published shows up without a reload.
   const allEvents = useApi<EventItem[]>('/events', 60_000).data ?? []
+  const allPlaces = useApi<string[]>('/events/places').data ?? []
   const communities = groups.filter((g) => !g.forEvent && !g.project)
   const projects = groups.filter((g) => g.project)
-  // Your city first, then every other place something is happening.
+  // Your city first, then every place in Comoonly with something on (busiest first), then Online.
   const places = [
-    ...new Set(
-      ['Anywhere', me!.city, ...communities.map((g) => g.location), ...allEvents.map((e) => e.city), 'Online'].filter(
-        (c) => c && c !== 'Pakistan',
-      ),
-    ),
+    'Anywhere',
+    ...(me!.city && me!.city !== 'Online' ? [me!.city] : []),
+    ...allPlaces.filter((c) => c.toLowerCase() !== me!.city.toLowerCase()),
+    'Online',
   ]
   // Events with no price on the post only show for "Any price". Communities are free to join.
   const withinBudget = (e: EventItem) =>

@@ -25,6 +25,7 @@ const ICEBREAKERS = [
   'Texting or voice notes?',
   'What’s on your bucket list for this year?',
 ]
+const randomIcebreaker = () => '🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)]
 
 // One conversation: a group chat (/groups/:id/messages) or a private one (/messages/with/:userId).
 // `onSent`: the page can refresh around the chat (e.g. a message request just became a chat).
@@ -39,6 +40,8 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
   const items = data || []
   const group = path.startsWith('/groups/') // polls and icebreakers are for group chats
   const [polling, setPolling] = useState(false)
+  const [tray, setTray] = useState(false) // the ＋ menu: photo, poll, icebreaker
+  const icebreaker = () => send(randomIcebreaker())
 
   useLayoutEffect(() => {
     const history = list.current
@@ -157,7 +160,19 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
     <div className="chat">
       <div className="chat-history" ref={list} role="log" aria-label="Conversation" aria-live="polite">
         {error && <p className="empty">{error}</p>}
-        {data && !items.length && <p className="empty">Start with a little hello.</p>}
+        {data &&
+          !items.length &&
+          (group ? (
+            <div className="break-ice">
+              <span aria-hidden="true">🎲</span>
+              <p>Not sure what to say first? Nobody is.</p>
+              <button className="button lime" disabled={sending} onClick={icebreaker}>
+                Break the ice
+              </button>
+            </div>
+          ) : (
+            <p className="empty">Start with a little hello.</p>
+          ))}
         {items.map((message) => (
           <div key={message.id} className={'bubble ' + (message.authorId === me!.id ? 'outgoing' : '')}>
             <strong>
@@ -193,10 +208,11 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
           </div>
         ))}
       </div>
-      {!recorder && (
-        <div className="chat-tools">
-          <label className="chip">
-            📷 Photo
+      {tray && !recorder && (
+        <div className="chat-tray" role="group" aria-label="Add to the chat">
+          <label>
+            <span aria-hidden="true">📷</span>
+            Photo
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -205,22 +221,20 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 e.target.value = ''
+                setTray(false)
                 if (file) sendPhoto(file)
               }}
             />
           </label>
           {group && (
             <>
-              <button type="button" className="chip" onClick={() => setPolling(true)}>
-                📊 Poll
+              <button type="button" onClick={() => (setTray(false), setPolling(true))}>
+                <span aria-hidden="true">📊</span>
+                Poll
               </button>
-              <button
-                type="button"
-                className="chip"
-                disabled={sending}
-                onClick={() => send('🎲 ' + ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)])}
-              >
-                🎲 Icebreaker
+              <button type="button" disabled={sending} onClick={() => (setTray(false), icebreaker())}>
+                <span aria-hidden="true">🎲</span>
+                Icebreaker
               </button>
             </>
           )}
@@ -272,6 +286,15 @@ export default function Chat({ path, onSent }: { path: string; onSent?: () => vo
             if (draft.trim() && !sending) send()
           }}
         >
+          <button
+            type="button"
+            className={'tray-toggle' + (tray ? ' open' : '')}
+            aria-label={tray ? 'Close the menu' : 'Add a photo, poll or icebreaker'}
+            aria-expanded={tray}
+            onClick={() => setTray((t) => !t)}
+          >
+            ＋
+          </button>
           <input
             aria-label="Message"
             placeholder={sending ? 'Sending…' : 'Say something nice…'}

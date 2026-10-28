@@ -486,3 +486,11 @@ test('idea graveyard: post an unfinished idea, get help, hand it over, keep the 
   })
   assert.equal((await get(`/groups/${free.id}`)).ownerId, 'zain')
 })
+
+test('the Where filter lists each city once, busiest first, without placeholders', async () => {
+  const sara = await loginAs('sara')
+  const places = await get('/events/places', sara)
+  assert.ok(places.includes('Sialkot')) // where the seed communities meet
+  assert.equal(new Set(places.map((p: string) => p.toLowerCase())).size, places.length) // no duplicates
+  assert.ok(!places.some((p: string) => ['', 'Online', 'Pakistan'].includes(p)))
+})

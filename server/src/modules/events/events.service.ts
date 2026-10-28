@@ -122,6 +122,22 @@ export function listPublished() {
   return db.prepare(`${SELECT} WHERE e.status = 'published' AND ${STILL_ON} ORDER BY e.starts_at`).all(today(), today())
 }
 
+// Every place something is on: cities of upcoming events and of communities and projects, for the
+// "Where" filter. Spelled as most often written; "Pakistan" (a placeholder for no city) is left out.
+export function places() {
+  return (
+    db
+      .prepare(
+        `SELECT city FROM (
+           SELECT city FROM events e WHERE e.status = 'published' AND ${STILL_ON}
+           UNION ALL SELECT location FROM groups WHERE event_id IS NULL
+         ) WHERE city NOT IN ('', 'Online', 'Pakistan')
+         GROUP BY lower(trim(city)) ORDER BY COUNT(*) DESC, city`,
+      )
+      .all(today(), today()) as { city: string }[]
+  ).map((r) => r.city.trim())
+}
+
 export function listDrafts() {
   return db.prepare(`${SELECT} WHERE e.status = 'draft' AND ${STILL_ON} ORDER BY e.starts_at`).all(today(), today())
 }

@@ -1313,17 +1313,78 @@ main:has(> .chat) > .chat {
   font-weight: 700;
   color: var(--ink);
 }
-/* Group chat activities: the Poll and Icebreaker buttons, poll choices and icebreaker bubbles. */
-.chat-tools {
+/* Group chat activities: the ＋ tray above the message box, poll choices, icebreakers. */
+.chat-tray {
   display: flex;
-  gap: 8px;
-  margin: 8px 0;
+  gap: 18px;
+  justify-content: center;
+  margin: 12px 0 -4px;
+  padding: 12px;
+  border-radius: 22px;
+  background: white;
+  animation: tray-in 0.15s ease-out;
 }
-.chat-tools .chip {
+@keyframes tray-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.chat-tray label,
+.chat-tray button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
   border: 0;
-  min-height: 36px;
-  padding: 8px 14px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
+}
+.chat-tray span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: 22px;
+}
+.chat-tray label:hover span,
+.chat-tray button:hover span {
+  background: var(--lime);
+}
+.composer .tray-toggle {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink);
+  transition: transform 0.15s;
+}
+.composer .tray-toggle.open {
+  transform: rotate(45deg);
+}
+.break-ice {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 32px auto;
+  max-width: 260px;
+  text-align: center;
+}
+.break-ice > span {
+  font-size: 40px;
+}
+.break-ice p {
+  margin: 0;
+  color: var(--muted);
+}
+.break-ice .button {
+  width: auto;
+  padding: 0 22px;
 }
 .poll {
   display: grid;
@@ -1372,12 +1433,6 @@ main:has(> .chat) > .chat {
 /* "Find me a crew" stands out from the crews list. */
 .notice.match {
   background: linear-gradient(135deg, var(--lime), var(--lilac));
-}
-.chat-tools label.chip {
-  margin: 0;
-  min-height: 36px;
-  padding: 8px 14px;
-  cursor: pointer;
 }
 .chat-photo {
   display: block;
