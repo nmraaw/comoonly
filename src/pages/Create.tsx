@@ -14,7 +14,7 @@ const KIND_PARAMS = ['', 'project', 'event']
 export default function Create() {
   const { me, create, refresh } = useApp()
   const [category, setCategory] = useState(me!.interests[0] ?? 'Creative')
-  const [mode, setMode] = useState('In person')
+  const [mode, setMode] = useState('Online') // most communities start by talking; meeting up can come later
   // A community, or an unfinished idea for the Idea Graveyard (/create?kind=project).
   const [params, setParams] = useSearchParams()
   const project = params.get('kind') === 'project'

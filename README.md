@@ -1,24 +1,26 @@
 # Comoonly
 
-Find your kind of people, and go to things together. Comoonly shows real events happening in Pakistan
-(found by an AI event finder from Instagram and event sites, checked by an admin) and helps people who'd
-go if someone came with them: say how you're going, join the event's general chat, or go in a **crew**:
-2 to 5 verified people who meet up first and arrive together. Small interest groups work the same way.
+Find your kind of people. Comoonly is for everyone who has interests but no community: it connects
+people who like the same things, online or in real life. Talk in communities, team up on ideas (or revive
+someone's unfinished one), and when you want to, go to real events together so you're never alone.
 
 **Live app:** https://comoonly.onrender.com (admin: `/admin/`). Sign up with your email (a 6-digit code
-is emailed), fill in your profile, then open an event on Discover.
+is emailed), pick your interests, and Comoonly shows you who and what fits you.
 
 **What it does**
-- **Events:** posters, when and where, countdown, official registration link, add to calendar, share.
-- **Going together:** "looking for company / happy to meet / with my friends", a general chat per event,
-  and crews with an organizer who accepts people. **Women-only crews** for verified women.
-- **Trust and safety:** email-verified sign-up, ✓ Verified profiles (photo, bio, Instagram/TikTok),
-  message requests from strangers (one message until accepted), block and report, password reset.
-- **Chat:** private chats, group and crew chats, **voice messages**.
-- **AI event finder:** reads Instagram (official API: hashtags and chosen accounts) and event sites; Google
-  Gemini turns posts and posters into events. Nothing goes live until an admin approves it. Anyone can
-  suggest an event from a link, caption or screenshot.
-- **Admin:** dashboard (people, events, reports, backup), review queue, posters, deleting events.
+- **Communities:** around any interest (16 to pick from, or your own). "For you" matching with a reason
+  ("You like Drawing · Lahore"), alerts when a new one starts nearby, upcoming events for each one.
+- **The Idea Graveyard:** post an idea you couldn't finish (how far it got, why it stopped, what it needs).
+  Others offer help or adopt it; the original creator stays credited and its story is kept.
+- **Chat that keeps people coming back:** polls, icebreakers, photos, voice messages, Spotify songs and
+  Jams, a pinned plan.
+- **Events:** found by an AI from Instagram and event sites, or snapped from a poster with your camera;
+  checked by an admin. Prices, budget filter, "✨ Plan my weekend".
+- **Going together:** a general chat per event, **crews** of 2 to 5 (women-only optional), and
+  "✨ Find me a crew", which matches people going alone by shared interests. Ride together, split costs,
+  "Still coming?" and "I'm here" on the day, a show-up score, and a shareable crew memory card.
+- **Trust and safety:** email-verified sign-up, ✓ Verified profiles, message requests, block and report.
+- **Admin:** dashboard, review queue, posters.
 
 **Built with**
 - **Frontend:** React + Vite + TypeScript (`src/`), mobile first.

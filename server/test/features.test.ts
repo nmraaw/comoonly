@@ -494,3 +494,27 @@ test('the Where filter lists each city once, busiest first, without placeholders
   assert.equal(new Set(places.map((p: string) => p.toLowerCase())).size, places.length) // no duplicates
   assert.ok(!places.some((p: string) => ['', 'Online', 'Pakistan'].includes(p)))
 })
+
+test('plan my weekend: this weekend’s events that fit you, with reasons (without the AI, by a simple rule)', async () => {
+  const { weekend, byRule } = await import('../src/modules/events/events.weekend.ts')
+  // Wednesday 4 Nov 2026 → Fri 6 to Sun 8; on Saturday it's today to Sunday.
+  assert.deepEqual(weekend(Date.parse('2026-11-04T12:00:00+05:00')), { from: '2026-11-06', to: '2026-11-08' })
+  assert.deepEqual(weekend(Date.parse('2026-11-07T12:00:00+05:00')), { from: '2026-11-07', to: '2026-11-08' })
+  assert.deepEqual(weekend(Date.parse('2026-11-08T12:00:00+05:00')), { from: '2026-11-08', to: '2026-11-08' })
+
+  const facts = [
+    { id: 'a', title: 'Paid talk', category: 'Meetup', price: 3000, going: 9, openCrews: 0 },
+    { id: 'b', title: 'Game jam', category: 'Hackathon', price: 0, going: 1, openCrews: 2 },
+    { id: 'c', title: 'Free walk', category: 'Event', price: 0, going: 0, openCrews: 0 },
+  ]
+  const plan = byRule({ interests: ['Hackathons'] }, facts)
+  assert.deepEqual(
+    plan.picks.map((p: { id: string }) => p.id),
+    ['b', 'c', 'a'],
+  )
+  assert.equal(plan.picks[0].why, 'You like Hackathons · it’s free · 2 crews you can join · 1 from Comoonly going')
+
+  const zain = await loginAs('zain')
+  const answer = await get('/events/weekend', zain) // no AI in tests: the rule plans it
+  assert.ok(['this weekend', 'this week'].includes(answer.when))
+})

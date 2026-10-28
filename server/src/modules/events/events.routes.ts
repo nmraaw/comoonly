@@ -34,12 +34,18 @@ import {
   updateEvent,
 } from './events.service.ts'
 import { eventsFromPost } from './events.ai.ts'
+import { planWeekend } from './events.weekend.ts'
 import { scanSources } from './events.finder.ts'
 import { findPost } from './events.instagram.ts'
 import { sendIcs } from '../../calendar.ts'
 import { sendPhoto } from '../../photos.ts'
 
 export const eventRoutes = Router()
+
+// "✨ Plan my weekend": a few events for you, with reasons. Before '/:id' too.
+eventRoutes.get('/weekend', requireAuth, async (req: any, res) => {
+  res.json(await planWeekend(req.user.id))
+})
 
 // The "Where" filter's choices. Before '/:id', so "places" isn't read as an event id.
 eventRoutes.get('/places', requireAuth, (_req, res) => {

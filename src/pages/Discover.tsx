@@ -4,6 +4,7 @@ import { useFeedWheel } from '../hooks/useFeedWheel'
 import GroupCard from '../components/GroupCard'
 import EventCard from '../components/EventCard'
 import ProjectCard from '../components/ProjectCard'
+import WeekendPlan from '../components/WeekendPlan'
 import { useApi } from '../api'
 import type { EventItem } from '../types'
 import { Chips, Empty, Logo, Mascot, Modal } from '../components/UI'
@@ -158,6 +159,7 @@ export default function Discover() {
             </div>
           </div>
         )}
+        {tab === 'For you' && <WeekendPlan />}
         {featured && (
           <>
             <h2 className="section-title">🪦 Something worth picking up</h2>

@@ -86,77 +86,107 @@ export default function EventPage() {
         after={
           <>
             <h2 className="section-title">Go together</h2>
+            <p className="hint">Nobody from Comoonly has to go alone.</p>
             {/* Who's going unlocks once you say you're going too (the server keeps it locked). */}
-            {going.data && (going.data.locked ? !!going.data.count : !!going.data.people?.length) && (
-              <div className="notice going-list">
-                <strong>👀 Who’s going</strong>
-                {going.data.locked ? (
-                  <>
-                    <div className="crew locked" aria-hidden="true">
-                      {Array.from({ length: Math.min(going.data.count!, 5) }, (_, i) => (
+            {going.data && (
+              <div className="gt-card">
+                <div className="gt-row">
+                  {going.data.locked ? (
+                    <div className="avatar-stack locked" aria-hidden="true">
+                      {Array.from({ length: Math.max(1, Math.min(going.data.count!, 4)) }, (_, i) => (
                         <span className="avatar" key={i} />
                       ))}
                     </div>
-                    <small>
-                      {going.data.count} {going.data.count === 1 ? 'person' : 'people'} from Comoonly. Tap “I want to
-                      go” to see who.
-                    </small>
-                  </>
-                ) : (
-                  <div className="going-people">
-                    {going.data.people!.map((p) => (
-                      <Link key={p.id} className="member-row" to={'/users/' + p.id}>
-                        <Avatar id={p.id} name={p.name} />
-                        <span>
-                          <strong>{p.name}</strong>
-                        </span>
-                      </Link>
-                    ))}
+                  ) : (
+                    <div className="avatar-stack">
+                      {going.data.people!.slice(0, 4).map((p) => (
+                        <Link key={p.id} to={'/users/' + p.id} aria-label={p.name}>
+                          <Avatar id={p.id} name={p.name} />
+                        </Link>
+                      ))}
+                      {!going.data.people!.length && <span className="gt-icon">👋</span>}
+                    </div>
+                  )}
+                  <div className="gt-text">
+                    {going.data.locked ? (
+                      <>
+                        <strong>
+                          {going.data.count ? `${going.data.count} from Comoonly going` : 'Nobody from Comoonly yet'}
+                        </strong>
+                        <small>{going.data.count ? 'Tap “I want to go” to see who' : 'Be the first to go'}</small>
+                      </>
+                    ) : going.data.people!.length ? (
+                      <>
+                        <strong>{going.data.people!.length} from Comoonly going</strong>
+                        <small>
+                          {going.data
+                            .people!.slice(0, 3)
+                            .map((p) => p.name.split(' ')[0])
+                            .join(', ')}
+                          {going.data.people!.length > 3 && ` and ${going.data.people!.length - 3} more`}
+                        </small>
+                      </>
+                    ) : (
+                      <>
+                        <strong>You’re the first one going</strong>
+                        <small>Others will see you here</small>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
-            <div className="notice info-rows">
-              <p>
-                <strong>💬 General chat</strong> · one big group chat for everyone from Comoonly at this event. Say hi,
-                ask questions, find people.
-              </p>
-              {intent && intent.value !== 'friends' && e.groupId ? (
-                <Link className="button primary" to={'/groups/' + e.groupId + '?tab=Chat'}>
-                  Open the group chat →
-                </Link>
-              ) : (
-                <small>Open to anyone going who’s looking for company or happy to meet people.</small>
-              )}
+            <div className="gt-card">
+              <div className="gt-row">
+                <span className="gt-icon">💬</span>
+                <div className="gt-text">
+                  <strong>General chat</strong>
+                  <small>
+                    {intent && intent.value !== 'friends' && e.groupId
+                      ? 'Everyone from Comoonly at this event'
+                      : 'Opens when you tap “I want to go”'}
+                  </small>
+                </div>
+                {intent && intent.value !== 'friends' && e.groupId && (
+                  <Link className="gt-action" to={'/groups/' + e.groupId + '?tab=Chat'}>
+                    Open
+                  </Link>
+                )}
+              </div>
             </div>
+
             <h2 className="section-title">Crews</h2>
-            <p>
-              <strong>A crew is 2 to 5 people</strong> who meet up first and arrive together. The organizer says yes to
-              who joins.
-            </p>
+            <p className="hint">2 to 5 people who meet first and arrive together. The organizer says who joins.</p>
             {!me!.verified && (
-              <Link className="notice pink" to="/me/edit">
-                <strong>Get ✓ Verified</strong> to start or join a crew: finish your profile →
+              <Link className="gt-card gt-row" to="/me/edit">
+                <span className="gt-icon">✓</span>
+                <span className="gt-text">
+                  <strong>Get verified to join crews</strong>
+                  <small>Finish your profile, it takes a minute</small>
+                </span>
+                <span className="gt-action">Go</span>
               </Link>
             )}
             {me!.verified && crews.data && !crews.data.some((c) => c.myStatus) && (
               // "Find me a crew": Comoonly picks the people you have most in common with (events.going.ts).
-              <article className="notice match">
-                <strong>✨ Find me a crew</strong>
+              <div className="gt-card match">
+                <div className="gt-row">
+                  <span className="gt-icon">✨</span>
+                  <div className="gt-text" role={match.data?.waiting ? 'status' : undefined}>
+                    <strong>{match.data?.waiting ? 'Finding your crew…' : 'Find me a crew'}</strong>
+                    <small>
+                      {match.data?.waiting
+                        ? `${match.data.total} ${match.data.total === 1 ? 'person' : 'people'} waiting. We’ll tell you when it’s ready.`
+                        : 'We match you with people who share your interests'}
+                    </small>
+                  </div>
+                </div>
                 {match.data?.waiting ? (
-                  <>
-                    <p role="status">
-                      Matching you with people who like what you like… {match.data.total}{' '}
-                      {match.data.total === 1 ? 'person is' : 'people are'} waiting. We’ll tell you the moment your crew
-                      is ready.
-                    </p>
-                    <button className="text-button" onClick={() => send('/events/' + e.id + '/match', 'DELETE')}>
-                      Stop matching
-                    </button>
-                  </>
+                  <button className="text-button" onClick={() => send('/events/' + e.id + '/match', 'DELETE')}>
+                    Stop matching
+                  </button>
                 ) : (
                   <>
-                    <p>Don’t know anyone going? We’ll match you with people who share your interests.</p>
                     {me!.gender === 'woman' && (
                       <label className="check-row">
                         <input type="checkbox" checked={onlyWomen} onChange={(x) => setOnlyWomen(x.target.checked)} />{' '}
@@ -164,39 +194,36 @@ export default function EventPage() {
                       </label>
                     )}
                     <button
-                      className="button lime"
+                      className="button primary"
                       onClick={() => send('/events/' + e.id + '/match', 'POST', { womenOnly: onlyWomen })}
                     >
-                      ✨ Find me a crew
+                      Find me a crew →
                     </button>
                   </>
                 )}
-              </article>
+              </div>
             )}
             {crews.data?.map((c) => (
-              <article className="notice lilac" key={c.id}>
-                <Link className="member-row" to={'/users/' + c.ownerId}>
+              <div className="gt-card" key={c.id}>
+                <Link className="gt-row" to={'/users/' + c.ownerId}>
                   <Avatar id={c.ownerId} name={c.owner} />
-                  <span>
+                  <span className="gt-text">
                     <strong>{c.ownerId === me!.id ? 'Your crew' : `${c.owner.split(' ')[0]}’s crew`}</strong>
-                    <small>Organized by {c.ownerId === me!.id ? 'you' : c.owner} · see profile →</small>
+                    <small>
+                      {c.members} of {c.size} going{c.area ? ` · from ${c.area}` : ''}
+                    </small>
                   </span>
                   {c.womenOnly && <span className="pill">👩 Women only</span>}
                 </Link>
-                <p>
-                  📍 <strong>{c.plan}</strong>
-                </p>
-                <small>
-                  {c.members} of {c.size} going together{c.area ? ` · coming from ${c.area}` : ''}
-                </small>
+                <p className="gt-plan">📍 {c.plan}</p>
                 {c.myStatus === 'joined' ? (
                   <Link className="button" to={'/groups/' + c.id}>
                     You’re in · Open crew →
                   </Link>
                 ) : c.myStatus === 'pending' ? (
-                  <p className="hint">Asked to join. {c.owner.split(' ')[0]} will reply.</p>
+                  <small className="gt-plan">Asked to join. {c.owner.split(' ')[0]} will reply.</small>
                 ) : c.members >= c.size ? (
-                  <p className="hint">This crew is full.</p>
+                  <small className="gt-plan">This crew is full.</small>
                 ) : (
                   me!.verified && (
                     <button className="button" onClick={() => setJoining(c)}>
@@ -204,12 +231,11 @@ export default function EventPage() {
                     </button>
                   )
                 )}
-              </article>
+              </div>
             ))}
-            {crews.data && !crews.data.length && <p className="hint">No crews yet. Start the first one!</p>}
             {me!.verified && !crews.data?.some((c) => c.ownerId === me!.id) && (
-              <button className="button lime" onClick={() => setStarting(true)}>
-                ＋ Start a crew
+              <button className="text-button" onClick={() => setStarting(true)}>
+                ＋ Or start your own crew
               </button>
             )}
           </>

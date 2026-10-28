@@ -96,7 +96,7 @@ export function eventForGroup(groupId: string) {
 }
 
 // "Hackathons" in someone's interests matches a Hackathon; "Music" matches an event mentioning music.
-function interested(interest: string, event: any) {
+export function interested(interest: string, event: any) {
   const word = interest.toLowerCase().replace(/s$/, '')
   if (word === event.category.toLowerCase()) return true
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

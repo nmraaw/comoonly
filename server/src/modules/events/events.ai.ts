@@ -30,6 +30,17 @@ Never invent links or dates. Reply [] if there are none.`
 // Sends text (and optionally an image) to the configured AI and returns the events it found.
 // Works with any OpenAI-compatible provider: Gemini, Groq, Ollama... (see .env.example).
 export async function askAi(content: string | object[]): Promise<Candidate[]> {
+  const reply = await chat(prompt(), content)
+  try {
+    const items = JSON.parse(reply.slice(reply.indexOf('['), reply.lastIndexOf(']') + 1))
+    return Array.isArray(items) ? items : []
+  } catch {
+    return [] // the AI didn't answer with a list: treat it as "nothing found"
+  }
+}
+
+// One question to the AI, its answer as text.
+export async function chat(system: string, content: string | object[]) {
   const res = await fetch(`${config.ai.baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -40,7 +51,7 @@ export async function askAi(content: string | object[]): Promise<Candidate[]> {
       model: config.ai.model,
       temperature: 0,
       messages: [
-        { role: 'system', content: prompt() },
+        { role: 'system', content: system },
         { role: 'user', content },
       ],
     }),
@@ -50,13 +61,7 @@ export async function askAi(content: string | object[]): Promise<Candidate[]> {
     throw err
   })
   if (!res.ok) throw new HttpError(502, `The AI service answered ${res.status}. Try again in a minute.`)
-  const reply = String((await res.json()).choices?.[0]?.message?.content ?? '')
-  try {
-    const items = JSON.parse(reply.slice(reply.indexOf('['), reply.lastIndexOf(']') + 1))
-    return Array.isArray(items) ? items : []
-  } catch {
-    return [] // the AI didn't answer with a list: treat it as "nothing found"
-  }
+  return String((await res.json()).choices?.[0]?.message?.content ?? '')
 }
 
 // Keeps only well-formed events that are still worth showing: not over, registration still open,
