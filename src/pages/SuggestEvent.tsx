@@ -5,6 +5,21 @@ import DetailHeader from '../components/DetailHeader'
 import { shrink } from '../images'
 // Anyone can share an event they saw on Instagram, TikTok, WhatsApp or a poster. It goes live after a review.
 export default function SuggestEvent() {
+  return (
+    <>
+      <DetailHeader title="Suggest an event" fallback="/events" />
+      <h1>
+        Seen something
+        <br />
+        worth going to?
+      </h1>
+      <SuggestForm />
+    </>
+  )
+}
+
+// The form itself, also on the Create page ("📅 An event"): the AI reads the post, an admin approves it.
+export function SuggestForm() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
@@ -38,8 +53,7 @@ export default function SuggestEvent() {
   if (done)
     return (
       <>
-        <DetailHeader title="Suggest an event" fallback="/events" />
-        <h1>Thank you!</h1>
+        <h2>Thank you!</h2>
         <p>We’ll check the details. Once it’s approved, it shows up on Events for everyone.</p>
         <button className="button primary" onClick={() => setDone(false)}>
           Suggest another
@@ -51,12 +65,6 @@ export default function SuggestEvent() {
     )
   return (
     <>
-      <DetailHeader title="Suggest an event" fallback="/events" />
-      <h1>
-        Seen something
-        <br />
-        worth going to?
-      </h1>
       <p>
         Share an event from Instagram, TikTok or anywhere else. For Instagram, the link and the account’s @name are
         enough. For other sites, add a screenshot of the post or paste its caption.
