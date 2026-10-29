@@ -81,8 +81,7 @@ export default function Welcome() {
         ) : (
           <>
             <p>
-              If <strong>{resetEmail}</strong> has an account, a 6-digit code is on its way. It can take a minute; check
-              spam too.
+              If <strong>{resetEmail}</strong> has an account, a 6-digit code is on its way. Check spam too.
             </p>
             <form
               onSubmit={(e) => (
@@ -146,7 +145,7 @@ export default function Welcome() {
           step.
         </h1>
         <p>
-          We sent a 6-digit code to <strong>{String(pending.email)}</strong>. It can take a minute; check spam too.
+          We sent a 6-digit code to <strong>{String(pending.email)}</strong>. Check spam too.
         </p>
         <form
           onSubmit={(e) => (

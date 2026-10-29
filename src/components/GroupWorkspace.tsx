@@ -174,11 +174,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
       {over && (
         <article className="notice lilac">
           <strong>Same crew next time? 🫶</strong>
-          <p>
-            {host
-              ? 'Keep this crew as a community: same people, same chat, and you hear about the next events together.'
-              : `${group.owner.split(' ')[0]} can keep this crew going as a community. Tell them in the chat!`}
-          </p>
+          <p>{host ? 'Keep this crew as a community.' : `${group.owner.split(' ')[0]} can keep this crew going.`}</p>
           {host && (
             <button className="button lime" onClick={() => setKeeping(true)}>
               Keep this crew going →
@@ -281,15 +277,12 @@ export default function GroupWorkspace({ id }: { id: string }) {
         <>
           <p className="hint">
             What’s coming up for {group.category.toLowerCase()}{' '}
-            {group.mode === 'Online' ? 'online' : 'in ' + group.location}. Going? Start a crew on the event and invite
-            people from here.
+            {group.mode === 'Online' ? 'online' : 'in ' + group.location}.
           </p>
           {upcoming.map((e) => (
             <EventCard key={e.id} event={e} />
           ))}
-          {allEvents.data && !upcoming.length && (
-            <Empty>No {group.category.toLowerCase()} events coming up yet. Plan something in the chat!</Empty>
-          )}
+          {allEvents.data && !upcoming.length && <Empty>No {group.category.toLowerCase()} events coming up yet.</Empty>}
         </>
       )}
       {tab === 'Event' && (
@@ -358,10 +351,7 @@ export default function GroupWorkspace({ id }: { id: string }) {
           {host && !group.forEvent && (
             <article className="notice pink danger-zone">
               <strong>Delete this {group.project ? 'idea' : 'community'}</strong>
-              <p>
-                ⚠️ This can’t be undone. The chat, members, photos and everything in it are deleted for everyone, and
-                members are told it closed.
-              </p>
+              <p>⚠️ This can’t be undone. Everything in it is deleted for everyone.</p>
               <button
                 className="button"
                 onClick={() =>

@@ -33,9 +33,7 @@ export default function WeekendPlan() {
         <Modal title={plan ? `Your plan for ${plan.when}` : 'Planning your weekend…'} onClose={() => setOpen(false)}>
           {!plan && !error && <p role="status">Looking at what’s on and what you like…</p>}
           {error && <p className="notice pink">{error}</p>}
-          {plan && !plan.picks.length && (
-            <p>Nothing on near you this week yet. Check Unfinished or Groups, or share an event you’ve seen!</p>
-          )}
+          {plan && !plan.picks.length && <p>Nothing on near you this week yet.</p>}
           {plan?.intro && <p>{plan.intro}</p>}
           <ol className="weekend-plan">
             {plan?.picks.map(({ event: e, why }) => (

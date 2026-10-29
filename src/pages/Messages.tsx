@@ -55,8 +55,7 @@ function PrivateChat({ id }: { id: string }) {
           {user.connection === 'incoming' && (
             <div className="notice lilac">
               <p>
-                <strong>{first} sent you a message request.</strong> Reply or accept to chat. They won’t know if you
-                ignore it.
+                <strong>{first} sent you a message request.</strong>
               </p>
               <div className="two-actions">
                 <button className="button" onClick={() => answer('decline')}>
@@ -68,12 +67,8 @@ function PrivateChat({ id }: { id: string }) {
               </div>
             </div>
           )}
-          {user.connection === 'pending' && (
-            <p className="hint">Message request sent. You can send more once {first} accepts or replies.</p>
-          )}
-          {!user.connection && (
-            <p className="hint">You’re not connected yet: your first message goes to {first} as a request.</p>
-          )}
+          {user.connection === 'pending' && <p className="hint">Request sent. Wait for {first} to reply.</p>}
+          {!user.connection && <p className="hint">Your first message goes as a request.</p>}
           <Chat key={id} path={'/messages/with/' + id} onSent={reload} />
         </>
       )}
@@ -149,7 +144,7 @@ export default function Messages() {
           ))}
           {list.data && !list.data.people.length && (
             <Empty>
-              No chats yet. Open anyone’s profile and tap Message to say hi.
+              No chats yet.
               <Link className="button" to="/">
                 Find people →
               </Link>

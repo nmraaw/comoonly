@@ -50,7 +50,6 @@ export default function MemoryCard({
       {card && (
         <>
           <img className="memory-card" src={card.url} alt={`Memory card for ${event.title}`} />
-          <p className="hint">Add more photos in the crew chat (📷 Photo) and they appear here.</p>
           <button className="button lime" onClick={share}>
             Share to your story →
           </button>

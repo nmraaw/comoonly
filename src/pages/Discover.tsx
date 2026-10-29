@@ -150,9 +150,7 @@ export default function Discover() {
             <Mascot name="loop" />
             <div>
               <h2>The Idea Graveyard</h2>
-              <p>
-                Ideas don’t have to die because their maker got stuck. Help one, or adopt it and give it a second life.
-              </p>
+              <p>Stuck ideas, waiting for someone to pick them up.</p>
               <Link className="text-button" to="/create?kind=project">
                 🪦 Lay your own idea to rest →
               </Link>
@@ -178,7 +176,7 @@ export default function Discover() {
           )
         ) : tab === 'Unfinished' && !active.length && !search ? (
           <Empty>
-            Nothing resting here yet. Got an idea you couldn’t finish? It deserves a second chance.
+            Nothing here yet.
             <Link className="button lime" to="/create?kind=project">
               Lay it to rest →
             </Link>

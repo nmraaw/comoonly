@@ -76,11 +76,7 @@ export default function Groups() {
             <article key={g.id} className={'activity-card group-art ' + g.color}>
               {i === 0 && view === 'Active' && <Mascot name="reel" />}
               <h2>{g.name}</h2>
-              <p>
-                {view === 'Active'
-                  ? people(g.members) + ' · Your little circle'
-                  : 'A hello in progress. Your request is pending.'}
-              </p>
+              <p>{view === 'Active' ? people(g.members) + ' · Your little circle' : 'Request pending'}</p>
               {view === 'Active' ? (
                 <Link className="button primary" to={'/groups/' + g.id}>
                   Open group →

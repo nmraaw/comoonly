@@ -102,10 +102,7 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
             <option value="private">Prefer not to say</option>
           </select>
         </label>
-        <p className="hint">
-          Only used for women-only crews, never shown on your profile. A full profile (city, this, a line about you,
-          interests) gets you ✓ Verified, needed to go to events in a crew.
-        </p>
+        <p className="hint">Only for women-only crews. Never shown.</p>
         <label>
           A short line about you
           <input name="tagline" maxLength={80} defaultValue={me!.tagline} placeholder="Here for the music" />
@@ -120,7 +117,7 @@ export default function ProfileSetup({ first = false }: { first?: boolean }) {
           />
         </label>
         <h2 className="section-title">Socials (optional)</h2>
-        <p className="hint">Helps people see you’re real before meeting up. Just your username.</p>
+        <p className="hint">Just your username.</p>
         <label>
           Instagram
           <input name="instagram" maxLength={80} defaultValue={me!.instagram} placeholder="sara.draws" />

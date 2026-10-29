@@ -156,7 +156,7 @@ export default function EventPage() {
             </div>
 
             <h2 className="section-title">Crews</h2>
-            <p className="hint">2 to 5 people who meet first and arrive together. The organizer says who joins.</p>
+            <p className="hint">Small groups who arrive together.</p>
             {!me!.verified && (
               <Link className="gt-card gt-row" to="/me/edit">
                 <span className="gt-icon">✓</span>
@@ -176,8 +176,8 @@ export default function EventPage() {
                     <strong>{match.data?.waiting ? 'Finding your crew…' : 'Find me a crew'}</strong>
                     <small>
                       {match.data?.waiting
-                        ? `${match.data.total} ${match.data.total === 1 ? 'person' : 'people'} waiting. We’ll tell you when it’s ready.`
-                        : 'We match you with people who share your interests'}
+                        ? `${match.data.total} ${match.data.total === 1 ? 'person' : 'people'} waiting`
+                        : 'Matched by interests'}
                     </small>
                   </div>
                 </div>

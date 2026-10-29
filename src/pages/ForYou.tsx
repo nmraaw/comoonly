@@ -39,9 +39,7 @@ export default function ForYou() {
         )}
       </h1>
       <p>
-        {matches.length
-          ? 'Ask to join with one tap. The organizer says hi back when they let you in.'
-          : 'No community for your interests yet. Start the first one, and we’ll tell people who like the same things.'}
+        {matches.length ? 'Ask to join with one tap.' : 'No community for your interests yet. Start the first one.'}
       </p>
       <div className="stack">
         {matches.map((g) => (

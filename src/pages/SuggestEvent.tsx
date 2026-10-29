@@ -57,7 +57,7 @@ export function SuggestForm() {
     return (
       <>
         <h2>Thank you!</h2>
-        <p>We’ll check the details. Once it’s approved, it shows up on Events for everyone.</p>
+        <p>We’ll check it, then it goes live.</p>
         <button className="button primary" onClick={() => setDone(false)}>
           Suggest another
         </button>
@@ -92,10 +92,7 @@ export function SuggestForm() {
           </button>
         </div>
       )}
-      <p>
-        Or share an event from Instagram, TikTok or anywhere else. For Instagram, the link and the account’s @name are
-        enough. For other sites, add a screenshot of the post or paste its caption.
-      </p>
+      <p>Or paste a link from Instagram, TikTok or anywhere.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -110,7 +107,6 @@ export function SuggestForm() {
           Instagram account (if the link doesn’t show it)
           <input name="account" maxLength={31} placeholder="@organizer" autoCapitalize="none" />
         </label>
-        <p className="hint">Works for business and creator accounts, like most brands, venues and organizers.</p>
         <label>
           Caption (optional for Instagram)
           <textarea name="text" maxLength={5000} placeholder="Paste the post’s text here" />

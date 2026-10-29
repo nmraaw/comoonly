@@ -78,9 +78,7 @@ export default function Create() {
       <>
         <Mascot name="loop" className="success-art" />
         <h1>Resting, not gone.</h1>
-        <p>
-          Your idea is in the Idea Graveyard. People who like {category} hear about it, and can offer help or adopt it.
-        </p>
+        <p>Your idea is in the Idea Graveyard.</p>
         <Link className="button primary" to={'/posts/' + created}>
           See your idea →
         </Link>
@@ -94,7 +92,7 @@ export default function Create() {
       <>
         <Mascot name="pip" className="success-art" />
         <h1>Hello, possibility.</h1>
-        <p>Your community is live. People who like {category} hear about it, and anyone can find it on Discover.</p>
+        <p>Your community is live.</p>
         <Link className="button primary" to={'/groups/' + created}>
           Open your community →
         </Link>

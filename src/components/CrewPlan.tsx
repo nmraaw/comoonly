@@ -80,7 +80,6 @@ export default function CrewPlan({
       <a className="button" href={directions} target="_blank" rel="noopener noreferrer">
         Directions in Google Maps ↗
       </a>
-      <p className="hint">Book one Careem or InDrive together, then add it below to split it.</p>
 
       <h2 className="section-title">💸 Split costs</h2>
       <form
@@ -123,9 +122,7 @@ export default function CrewPlan({
           )}
         </p>
       ))}
-      {costs.data && !costs.data.expenses.length && (
-        <p className="hint">Paid for tickets or a ride? Add it and everyone’s share is worked out.</p>
-      )}
+      {costs.data && !costs.data.expenses.length && <p className="hint">Add what you paid; it’s split equally.</p>}
       {!!costs.data?.settle.length && (
         <div className="notice mint">
           <strong>To be even ({rupees(Math.round(costs.data.total / members.length))} each):</strong>
