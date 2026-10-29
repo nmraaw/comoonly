@@ -1649,15 +1649,6 @@ main:has(> .chat) > .chat {
   margin: 4px 0;
   font-size: 14px;
 }
-/* Welcome: what Comoonly is for, in three lines. */
-.welcome-points {
-  margin: 0 0 18px;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-  font-weight: 600;
-}
 /* Event page, "Go together": matching white cards, icon left, text middle, action right. */
 .gt-card {
   display: grid;

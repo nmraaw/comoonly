@@ -201,12 +201,7 @@ export default function Welcome() {
           <br />
           Better together.
         </h1>
-        <p>Comoonly connects you with people who like what you like, online or in real life.</p>
-        <ul className="welcome-points">
-          <li>💬 Chat and share with communities around your interests</li>
-          <li>🪦 Team up on ideas, or bring an unfinished one back to life</li>
-          <li>📅 And when you want to, go to things together, never alone</li>
-        </ul>
+        <p>Find a few people for the things you keep saying you’ll do someday.</p>
         <button className="button lime" onClick={() => setMode('signup')}>
           Find my people →
         </button>
